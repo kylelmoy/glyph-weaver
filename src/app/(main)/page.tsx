@@ -11,7 +11,7 @@ import {
   Heading,
   Line,
 } from "@once-ui-system/core";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, Fragment } from "react";
 import { OPERATIONS, OPERATION_CATEGORIES, processText } from "@/lib/textOperations";
 import type { PipelineItem } from "@/lib/textOperations";
 
@@ -83,8 +83,8 @@ export default function Home() {
 
       <Row fillWidth gap="m" vertical="start">
         {/* Active Pipeline */}
-        <Column flex={1} gap="s" padding="m" radius="m">
-          <Heading variant="heading-strong-xs">Pipeline</Heading>
+        <Column flex={1} padding="m" radius="m">
+          <Heading variant="heading-strong-xs" marginBottom="s">Pipeline</Heading>
           {pipeline.length === 0 ? (
             <Text variant="body-default-s" onBackground="neutral-weak">
               Add operations from the panel on the right
@@ -94,60 +94,69 @@ export default function Home() {
               const op = OPERATIONS.find((o) => o.id === item.operationId);
               if (!op) return null;
               return (
-                <Column
-                  key={item.instanceId}
-                  gap="xs"
-                  padding="s"
-                  border="neutral-alpha-medium"
-                  radius="s"
-                >
-                  <Row gap="s" vertical="center" horizontal="between">
-                    <Row gap="xs" vertical="center">
-                      <Text variant="body-default-s" onBackground="neutral-weak">
-                        {index + 1}.
-                      </Text>
-                      <Text variant="label-strong-s">{op.name}</Text>
+                <Fragment key={item.instanceId}>
+                  <Column
+                    gap="xs"
+                    padding="s"
+                    border="neutral-alpha-medium"
+                    radius="s"
+                  >
+                    <Row gap="s" vertical="center" horizontal="between">
+                      <Row gap="xs" vertical="center">
+                        <Text variant="body-default-s" onBackground="neutral-weak">
+                          {index + 1}.
+                        </Text>
+                        <Text variant="label-strong-s">{op.name}</Text>
+                      </Row>
+                      <Row gap="2">
+                        <IconButton
+                          icon="chevronUp"
+                          size="s"
+                          variant="ghost"
+                          tooltip="Move up"
+                          disabled={index === 0}
+                          onClick={() => moveOperation(index, "up")}
+                        />
+                        <IconButton
+                          icon="chevronDown"
+                          size="s"
+                          variant="ghost"
+                          tooltip="Move down"
+                          disabled={index === pipeline.length - 1}
+                          onClick={() => moveOperation(index, "down")}
+                        />
+                        <IconButton
+                          icon="close"
+                          size="s"
+                          variant="ghost"
+                          tooltip="Remove"
+                          onClick={() => removeOperation(item.instanceId)}
+                        />
+                      </Row>
                     </Row>
-                    <Row gap="2">
-                      <IconButton
-                        icon="chevronUp"
-                        size="s"
-                        variant="ghost"
-                        tooltip="Move up"
-                        disabled={index === 0}
-                        onClick={() => moveOperation(index, "up")}
+                    {op.params?.map((param) => (
+                      <Input
+                        key={param.key}
+                        id={`${item.instanceId}-${param.key}`}
+                        label={param.label}
+                        placeholder={param.placeholder}
+                        value={item.params[param.key] ?? ""}
+                        onChange={(e) =>
+                          updateParam(item.instanceId, param.key, e.target.value)
+                        }
+                        height="s"
                       />
-                      <IconButton
-                        icon="chevronDown"
-                        size="s"
-                        variant="ghost"
-                        tooltip="Move down"
-                        disabled={index === pipeline.length - 1}
-                        onClick={() => moveOperation(index, "down")}
-                      />
-                      <IconButton
-                        icon="close"
-                        size="s"
-                        variant="ghost"
-                        tooltip="Remove"
-                        onClick={() => removeOperation(item.instanceId)}
+                    ))}
+                  </Column>
+                  {index < pipeline.length - 1 && (
+                    <Row fillWidth horizontal="center">
+                      <Column
+                        style={{ width: 2, height: 16 }}
+                        background="neutral-alpha-medium"
                       />
                     </Row>
-                  </Row>
-                  {op.params?.map((param) => (
-                    <Input
-                      key={param.key}
-                      id={`${item.instanceId}-${param.key}`}
-                      label={param.label}
-                      placeholder={param.placeholder}
-                      value={item.params[param.key] ?? ""}
-                      onChange={(e) =>
-                        updateParam(item.instanceId, param.key, e.target.value)
-                      }
-                      height="s"
-                    />
-                  ))}
-                </Column>
+                  )}
+                </Fragment>
               );
             })
           )}
