@@ -4,6 +4,7 @@ export interface ParamDefinition {
   key: string;
   label: string;
   placeholder?: string;
+  monospace?: boolean;
 }
 
 export interface OperationDefinition {
@@ -152,6 +153,38 @@ export const OPERATIONS: OperationDefinition[] = [
       const find = params.find ?? "";
       if (!find) return lines;
       return lines.map((line) => line.split(find).join(params.replace ?? ""));
+    },
+  },
+  {
+    id: "custom-js",
+    name: "Custom Expression",
+    description: "Transform each line with a JS expression — variable `line` holds the current line",
+    category: "Transformation",
+    params: [
+      {
+        key: "code",
+        label: "Expression (use `line`)",
+        placeholder: "e.g. line.split(',').reverse().join(',')",
+        monospace: true,
+      },
+    ],
+    apply: (lines, params) => {
+      const code = params.code?.trim() ?? "";
+      if (!code) return lines;
+      try {
+        // eslint-disable-next-line no-new-func
+        const fn = new Function("line", `return (${code})`);
+        return lines.map((line) => {
+          try {
+            const result = fn(line) as unknown;
+            return result == null ? "" : String(result);
+          } catch {
+            return line;
+          }
+        });
+      } catch {
+        return lines;
+      }
     },
   },
 ];

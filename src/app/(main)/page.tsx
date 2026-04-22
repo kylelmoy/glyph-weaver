@@ -153,6 +153,7 @@ export default function Home() {
                           updateParam(item.instanceId, param.key, e.target.value)
                         }
                         height="s"
+                        style={param.monospace ? { fontFamily: "var(--font-code)" } : undefined}
                       />
                     ))}
                   </Column>
