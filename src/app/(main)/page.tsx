@@ -5,14 +5,14 @@ import {
   Row,
   Textarea,
   Input,
+  Button,
   IconButton,
   Text,
   Heading,
-  Tag,
   Line,
 } from "@once-ui-system/core";
 import { useState, useMemo, useRef } from "react";
-import { OPERATIONS, processText } from "@/lib/textOperations";
+import { OPERATIONS, OPERATION_CATEGORIES, processText } from "@/lib/textOperations";
 import type { PipelineItem } from "@/lib/textOperations";
 
 export default function Home() {
@@ -67,24 +67,24 @@ export default function Home() {
     >
       <Heading>Glyph Weaver</Heading>
 
-      <Textarea
-        id="input"
-        label="Input"
-        placeholder="Paste text here, one item per line..."
-        value={inputText}
-        onChange={(e) => setInputText(e.target.value)}
-        lines={8}
-        resize="vertical"
-      />
+      <Column fillWidth gap="s">
+        <Heading variant="heading-strong-xs">Input</Heading>
+        <Textarea
+          id="input"
+          placeholder="Paste text here, one item per line..."
+          value={inputText}
+          onChange={(e) => setInputText(e.target.value)}
+          lines={8}
+          resize="vertical"
+        />
+      </Column>
 
       <Line />
 
       <Row fillWidth gap="m" vertical="start">
         {/* Active Pipeline */}
-        <Column flex={1} gap="s" padding="m" background="surface" radius="m">
-          <Text variant="label-default-s" onBackground="neutral-weak">
-            Pipeline
-          </Text>
+        <Column flex={1} gap="s" padding="m" radius="m">
+          <Heading variant="heading-strong-xs">Pipeline</Heading>
           {pipeline.length === 0 ? (
             <Text variant="body-default-s" onBackground="neutral-weak">
               Add operations from the panel on the right
@@ -94,13 +94,19 @@ export default function Home() {
               const op = OPERATIONS.find((o) => o.id === item.operationId);
               if (!op) return null;
               return (
-                <Column key={item.instanceId} gap="xs">
+                <Column
+                  key={item.instanceId}
+                  gap="xs"
+                  padding="s"
+                  border="neutral-alpha-medium"
+                  radius="s"
+                >
                   <Row gap="s" vertical="center" horizontal="between">
                     <Row gap="xs" vertical="center">
                       <Text variant="body-default-s" onBackground="neutral-weak">
                         {index + 1}.
                       </Text>
-                      <Tag label={op.name} variant="neutral" size="m" />
+                      <Text variant="label-strong-s">{op.name}</Text>
                     </Row>
                     <Row gap="2">
                       <IconButton
@@ -138,6 +144,7 @@ export default function Home() {
                       onChange={(e) =>
                         updateParam(item.instanceId, param.key, e.target.value)
                       }
+                      height="s"
                     />
                   ))}
                 </Column>
@@ -147,47 +154,45 @@ export default function Home() {
         </Column>
 
         {/* Available Operations */}
-        <Column flex={1} gap="s" padding="m" background="surface" radius="m">
-          <Text variant="label-default-s" onBackground="neutral-weak">
-            Available Operations
-          </Text>
-          {OPERATIONS.map((op) => (
-            <Row
-              key={op.id}
-              gap="s"
-              vertical="center"
-              horizontal="between"
-              padding="8"
-              border="neutral-alpha-medium"
-              radius="s"
-            >
-              <Column gap="2">
-                <Text variant="body-default-s">{op.name}</Text>
-                <Text variant="body-default-xs" onBackground="neutral-weak">
-                  {op.description}
+        <Column flex={1} gap="s" padding="m" radius="m">
+          <Heading variant="heading-strong-xs">Operations</Heading>
+          {OPERATION_CATEGORIES.map((category) => {
+            const ops = OPERATIONS.filter((op) => op.category === category);
+            return (
+              <Column key={category} gap="4">
+                <Text variant="label-default-xs" onBackground="neutral-weak">
+                  {category}
                 </Text>
+                <Row wrap gap="xs">
+                  {ops.map((op) => (
+                    <Button
+                      key={op.id}
+                      size="s"
+                      variant="secondary"
+                      suffixIcon="plus"
+                      onClick={() => addOperation(op.id)}
+                    >
+                      {op.name}
+                    </Button>
+                  ))}
+                </Row>
               </Column>
-              <IconButton
-                icon="plus"
-                size="s"
-                variant="secondary"
-                tooltip="Add to pipeline"
-                onClick={() => addOperation(op.id)}
-              />
-            </Row>
-          ))}
+            );
+          })}
         </Column>
       </Row>
 
       <Line />
 
-      <Textarea
-        id="output"
-        label="Output"
-        value={outputText}
-        lines={8}
-        readOnly
-      />
+      <Column fillWidth gap="s">
+        <Heading variant="heading-strong-xs">Output</Heading>
+        <Textarea
+          id="output"
+          value={outputText}
+          lines={8}
+          readOnly
+        />
+      </Column>
     </Column>
   );
 }

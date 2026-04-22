@@ -1,3 +1,5 @@
+export type OperationCategory = "Sorting" | "Filtering" | "Whitespace" | "Case" | "Transformation";
+
 export interface ParamDefinition {
   key: string;
   label: string;
@@ -8,6 +10,7 @@ export interface OperationDefinition {
   id: string;
   name: string;
   description: string;
+  category: OperationCategory;
   params?: ParamDefinition[];
   apply: (lines: string[], params: Record<string, string>) => string[];
 }
@@ -22,53 +25,61 @@ export const OPERATIONS: OperationDefinition[] = [
   // --- Sorting ---
   {
     id: "sort-alpha",
-    name: "Sort Alphabetically (A→Z)",
-    description: "Sort lines A→Z (case-insensitive)",
+    name: "Sort A→Z",
+    description: "Sort lines alphabetically, A→Z (case-insensitive)",
+    category: "Sorting",
     apply: (lines) =>
       [...lines].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" })),
   },
   {
     id: "sort-alpha-desc",
-    name: "Sort Alphabetically (Z→A)",
-    description: "Sort lines Z→A (case-insensitive)",
+    name: "Sort Z→A",
+    description: "Sort lines alphabetically, Z→A (case-insensitive)",
+    category: "Sorting",
     apply: (lines) =>
       [...lines].sort((a, b) => b.localeCompare(a, undefined, { sensitivity: "base" })),
   },
   {
     id: "sort-numeric",
-    name: "Sort Numerically (Ascending)",
+    name: "Sort Numerically ↑",
     description: "Sort lines by numeric value, ascending",
+    category: "Sorting",
     apply: (lines) => [...lines].sort((a, b) => Number.parseFloat(a) - Number.parseFloat(b)),
   },
   {
     id: "sort-numeric-desc",
-    name: "Sort Numerically (Descending)",
+    name: "Sort Numerically ↓",
     description: "Sort lines by numeric value, descending",
+    category: "Sorting",
     apply: (lines) => [...lines].sort((a, b) => Number.parseFloat(b) - Number.parseFloat(a)),
   },
   {
     id: "reverse-order",
     name: "Reverse Order",
     description: "Reverse the order of lines",
+    category: "Sorting",
     apply: (lines) => [...lines].reverse(),
   },
   // --- Filtering ---
   {
     id: "remove-duplicates",
-    name: "Remove Duplicate Lines",
+    name: "Remove Duplicates",
     description: "Keep only the first occurrence of each line",
+    category: "Filtering",
     apply: (lines) => [...new Set(lines)],
   },
   {
     id: "remove-empty",
     name: "Remove Empty Lines",
     description: "Remove blank and whitespace-only lines",
+    category: "Filtering",
     apply: (lines) => lines.filter((line) => line.trim() !== ""),
   },
   {
     id: "remove-containing",
     name: "Remove Lines Containing",
     description: "Remove lines that contain the specified text",
+    category: "Filtering",
     params: [{ key: "query", label: "Text to match", placeholder: "e.g. foo" }],
     apply: (lines, params) => {
       const query = params.query ?? "";
@@ -80,6 +91,7 @@ export const OPERATIONS: OperationDefinition[] = [
     id: "keep-containing",
     name: "Keep Lines Containing",
     description: "Keep only lines that contain the specified text",
+    category: "Filtering",
     params: [{ key: "query", label: "Text to match", placeholder: "e.g. foo" }],
     apply: (lines, params) => {
       const query = params.query ?? "";
@@ -92,6 +104,7 @@ export const OPERATIONS: OperationDefinition[] = [
     id: "trim-whitespace",
     name: "Trim Whitespace",
     description: "Remove leading and trailing whitespace from each line",
+    category: "Whitespace",
     apply: (lines) => lines.map((line) => line.trim()),
   },
   // --- Case ---
@@ -99,12 +112,14 @@ export const OPERATIONS: OperationDefinition[] = [
     id: "uppercase",
     name: "Uppercase",
     description: "Convert each line to UPPERCASE",
+    category: "Case",
     apply: (lines) => lines.map((line) => line.toUpperCase()),
   },
   {
     id: "lowercase",
     name: "Lowercase",
     description: "Convert each line to lowercase",
+    category: "Case",
     apply: (lines) => lines.map((line) => line.toLowerCase()),
   },
   // --- Transformation ---
@@ -112,6 +127,7 @@ export const OPERATIONS: OperationDefinition[] = [
     id: "add-prefix",
     name: "Add Prefix",
     description: "Prepend text to the start of each line",
+    category: "Transformation",
     params: [{ key: "prefix", label: "Prefix", placeholder: "e.g. - " }],
     apply: (lines, params) => lines.map((line) => `${params.prefix ?? ""}${line}`),
   },
@@ -119,6 +135,7 @@ export const OPERATIONS: OperationDefinition[] = [
     id: "add-suffix",
     name: "Add Suffix",
     description: "Append text to the end of each line",
+    category: "Transformation",
     params: [{ key: "suffix", label: "Suffix", placeholder: "e.g. ," }],
     apply: (lines, params) => lines.map((line) => `${line}${params.suffix ?? ""}`),
   },
@@ -126,6 +143,7 @@ export const OPERATIONS: OperationDefinition[] = [
     id: "find-replace",
     name: "Find and Replace",
     description: "Replace all occurrences of a string in each line",
+    category: "Transformation",
     params: [
       { key: "find", label: "Find", placeholder: "Text to find" },
       { key: "replace", label: "Replace with", placeholder: "Replacement text" },
@@ -136,6 +154,14 @@ export const OPERATIONS: OperationDefinition[] = [
       return lines.map((line) => line.split(find).join(params.replace ?? ""));
     },
   },
+];
+
+export const OPERATION_CATEGORIES: OperationCategory[] = [
+  "Sorting",
+  "Filtering",
+  "Whitespace",
+  "Case",
+  "Transformation",
 ];
 
 export function processText(input: string, pipeline: PipelineItem[]): string {
