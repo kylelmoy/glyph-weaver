@@ -88,11 +88,4 @@ const schema = {
   email: "kyle.l.moy@gmail.com",
 };
 
-// social links
-const social = {
-  twitter: "https://www.twitter.com/_onceui",
-  linkedin: "https://www.linkedin.com/company/once-ui/",
-  discord: "https://discord.com/invite/5EyAQ4eNdS",
-};
-
-export { baseURL, fonts, style, meta, schema, social, dataStyle };
+export { baseURL, fonts, style, meta, schema, dataStyle };

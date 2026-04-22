@@ -86,9 +86,17 @@ export default function Home() {
         <Column flex={1} padding="m" radius="m">
           <Heading variant="heading-strong-xs" marginBottom="s">Pipeline</Heading>
           {pipeline.length === 0 ? (
-            <Text variant="body-default-s" onBackground="neutral-weak">
-              Add operations from the panel on the right
-            </Text>
+            <Column gap="s">
+              <Text variant="body-strong-s" onBackground="neutral-weak">
+                Welcome to Glyph Weaver!
+              </Text>
+              <Text variant="body-default-s" onBackground="neutral-weak">
+                A simple data transformation playground to build pipelines for text manipulation. Add, remove, and reorder operations to see how they affect your input in real time.
+              </Text>
+              <Text variant="body-default-s" onBackground="neutral-weak">
+                Add an operation from the right to get started!
+              </Text>
+            </Column>
           ) : (
             pipeline.map((item, index) => {
               const op = OPERATIONS.find((o) => o.id === item.operationId);
