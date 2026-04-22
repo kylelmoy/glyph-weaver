@@ -29,6 +29,7 @@ export default function Home() {
   const [pipeline, setPipeline] = useState<PipelineItem[]>([]);
   const [pipelineName, setPipelineName] = useState("");
   const [savedPipelines, setSavedPipelines] = useState<SavedPipeline[]>([]);
+  const [showSaved, setShowSaved] = useState(false);
   const nextId = useRef(0);
 
   useEffect(() => {
@@ -123,94 +124,168 @@ export default function Home() {
 
       <Line />
 
-      <Row fillWidth gap="m" vertical="start">
+      <Row fillWidth gap="m" vertical="stretch">
         {/* Active Pipeline */}
         <Column flex={1} padding="m" radius="m">
-          <Heading variant="heading-strong-xs" marginBottom="s">Pipeline</Heading>
-          {pipeline.length === 0 ? (
-            <Column gap="s">
-              <Text variant="body-strong-s" onBackground="neutral-weak">
-                Welcome to Glyph Weaver!
-              </Text>
-              <Text variant="body-default-s" onBackground="neutral-weak">
-                A simple data transformation playground to build pipelines for text manipulation. Add, remove, and reorder operations to see how they affect your input in real time.
-              </Text>
-              <Text variant="body-default-s" onBackground="neutral-weak">
-                Add an operation from the right to get started!
-              </Text>
-            </Column>
-          ) : (
-            pipeline.map((item, index) => {
-              const op = OPERATIONS.find((o) => o.id === item.operationId);
-              if (!op) return null;
-              return (
-                <Fragment key={item.instanceId}>
-                  <Column
-                    gap="xs"
-                    padding="s"
-                    border="neutral-alpha-medium"
-                    radius="s"
-                  >
-                    <Row gap="s" vertical="center" horizontal="between">
-                      <Row gap="xs" vertical="center">
-                        <Text variant="body-default-s" onBackground="neutral-weak">
-                          {index + 1}.
-                        </Text>
-                        <Text variant="label-strong-s">{op.name}</Text>
+          <Column fillWidth fillHeight>
+            <Heading variant="heading-strong-xs" marginBottom="s">Pipeline</Heading>
+            {pipeline.length === 0 ? (
+              <Column gap="s">
+                <Text variant="body-strong-s" onBackground="neutral-weak">
+                  Welcome to Glyph Weaver!
+                </Text>
+                <Text variant="body-default-s" onBackground="neutral-weak">
+                  A simple data transformation playground to build pipelines for text manipulation. Add, remove, and reorder operations to see how they affect your input in real time.
+                </Text>
+                <Text variant="body-default-s" onBackground="neutral-weak">
+                  Add an operation from the right to get started!
+                </Text>
+              </Column>
+            ) : (
+              pipeline.map((item, index) => {
+                const op = OPERATIONS.find((o) => o.id === item.operationId);
+                if (!op) return null;
+                return (
+                  <Fragment key={item.instanceId}>
+                    <Column
+                      gap="xs"
+                      padding="s"
+                      border="neutral-alpha-medium"
+                      radius="s"
+                    >
+                      <Row gap="s" vertical="center" horizontal="between">
+                        <Row gap="xs" vertical="center">
+                          <Text variant="body-default-s" onBackground="neutral-weak">
+                            {index + 1}.
+                          </Text>
+                          <Text variant="label-strong-s">{op.name}</Text>
+                        </Row>
+                        <Row gap="2">
+                          <IconButton
+                            icon="chevronUp"
+                            size="s"
+                            variant="ghost"
+                            tooltip="Move up"
+                            disabled={index === 0}
+                            onClick={() => moveOperation(index, "up")}
+                          />
+                          <IconButton
+                            icon="chevronDown"
+                            size="s"
+                            variant="ghost"
+                            tooltip="Move down"
+                            disabled={index === pipeline.length - 1}
+                            onClick={() => moveOperation(index, "down")}
+                          />
+                          <IconButton
+                            icon="close"
+                            size="s"
+                            variant="ghost"
+                            tooltip="Remove"
+                            onClick={() => removeOperation(item.instanceId)}
+                          />
+                        </Row>
                       </Row>
-                      <Row gap="2">
-                        <IconButton
-                          icon="chevronUp"
-                          size="s"
-                          variant="ghost"
-                          tooltip="Move up"
-                          disabled={index === 0}
-                          onClick={() => moveOperation(index, "up")}
+                      {op.params?.map((param) => (
+                        <Input
+                          key={param.key}
+                          id={`${item.instanceId}-${param.key}`}
+                          label={param.label}
+                          placeholder={param.placeholder}
+                          value={item.params[param.key] ?? ""}
+                          onChange={(e) =>
+                            updateParam(item.instanceId, param.key, e.target.value)
+                          }
+                          height="s"
+                          style={param.monospace ? { fontFamily: "var(--font-code)" } : undefined}
                         />
-                        <IconButton
-                          icon="chevronDown"
-                          size="s"
-                          variant="ghost"
-                          tooltip="Move down"
-                          disabled={index === pipeline.length - 1}
-                          onClick={() => moveOperation(index, "down")}
-                        />
-                        <IconButton
-                          icon="close"
-                          size="s"
-                          variant="ghost"
-                          tooltip="Remove"
-                          onClick={() => removeOperation(item.instanceId)}
+                      ))}
+                    </Column>
+                    {index < pipeline.length - 1 && (
+                      <Row fillWidth horizontal="center">
+                        <Column
+                          style={{ width: 2, height: 16 }}
+                          background="neutral-alpha-medium"
                         />
                       </Row>
-                    </Row>
-                    {op.params?.map((param) => (
-                      <Input
-                        key={param.key}
-                        id={`${item.instanceId}-${param.key}`}
-                        label={param.label}
-                        placeholder={param.placeholder}
-                        value={item.params[param.key] ?? ""}
-                        onChange={(e) =>
-                          updateParam(item.instanceId, param.key, e.target.value)
-                        }
-                        height="s"
-                        style={param.monospace ? { fontFamily: "var(--font-code)" } : undefined}
-                      />
+                    )}
+                  </Fragment>
+                );
+              })
+            )}
+
+          </Column>
+          <Column fillWidth gap="xs" marginTop="m">
+            <Line />
+            <Row fillWidth vertical="center">
+              <Input
+                style={{ flex: 1 }}
+                id="pipeline-name"
+                placeholder="Name this pipeline..."
+                value={pipelineName}
+                onChange={(e) => setPipelineName(e.target.value)}
+                height="s"
+                radius="left"
+              />
+              <Button
+                size="l"
+                prefixIcon="save"
+                variant="secondary"
+                disabled={pipeline.length === 0}
+                onClick={savePipeline}
+                radius="right"
+              >
+                Save
+              </Button>
+            </Row>
+            {savedPipelines.length > 0 && (
+              <Column fillWidth gap="xs">
+                <Button
+                  size="s"
+                  variant="tertiary"
+                  suffixIcon={showSaved ? "chevronUp" : "chevronDown"}
+                  onClick={() => setShowSaved((v) => !v)}
+                >
+                  {savedPipelines.length} saved pipeline{savedPipelines.length !== 1 ? "s" : ""}
+                </Button>
+                {showSaved && (
+                  <Column gap="xs">
+                    {savedPipelines.map((saved) => (
+                      <Row
+                        key={saved.id}
+                        gap="s"
+                        vertical="center"
+                        horizontal="between"
+                        padding="s"
+                        border="neutral-alpha-medium"
+                        radius="s"
+                      >
+                        <Column gap="2">
+                          <Text variant="label-strong-s">{saved.name}</Text>
+                          <Text variant="body-default-xs" onBackground="neutral-weak">
+                            {saved.pipeline.length} operation{saved.pipeline.length !== 1 ? "s" : ""}{" · "}
+                            {new Date(saved.savedAt).toLocaleDateString()}
+                          </Text>
+                        </Column>
+                        <Row gap="xs">
+                          <Button size="s" variant="secondary" onClick={() => loadPipeline(saved)}>
+                            Load
+                          </Button>
+                          <IconButton
+                            icon="close"
+                            size="s"
+                            variant="ghost"
+                            tooltip="Delete"
+                            onClick={() => deleteSavedPipeline(saved.id)}
+                          />
+                        </Row>
+                      </Row>
                     ))}
                   </Column>
-                  {index < pipeline.length - 1 && (
-                    <Row fillWidth horizontal="center">
-                      <Column
-                        style={{ width: 2, height: 16 }}
-                        background="neutral-alpha-medium"
-                      />
-                    </Row>
-                  )}
-                </Fragment>
-              );
-            })
-          )}
+                )}
+              </Column>
+            )}
+          </Column>
         </Column>
 
         {/* Available Operations */}
@@ -241,67 +316,6 @@ export default function Home() {
           })}
         </Column>
       </Row>
-
-      <Line />
-
-      <Column fillWidth gap="s">
-        <Heading variant="heading-strong-xs">Saved Pipelines</Heading>
-        <Row fillWidth gap="xs" vertical="center">
-          <Input
-            style={{ flex: 1 }}
-            id="pipeline-name"
-            placeholder="Name this pipeline..."
-            value={pipelineName}
-            onChange={(e) => setPipelineName(e.target.value)}
-            height="s"
-          />
-          <Button
-            size="s"
-            variant="secondary"
-            disabled={pipeline.length === 0}
-            onClick={savePipeline}
-          >
-            Save
-          </Button>
-        </Row>
-        {savedPipelines.length === 0 ? (
-          <Text variant="body-default-s" onBackground="neutral-weak">
-            No saved pipelines yet. Build a pipeline above and save it here.
-          </Text>
-        ) : (
-          savedPipelines.map((saved) => (
-            <Row
-              key={saved.id}
-              gap="s"
-              vertical="center"
-              horizontal="between"
-              padding="s"
-              border="neutral-alpha-medium"
-              radius="s"
-            >
-              <Column gap="2">
-                <Text variant="label-strong-s">{saved.name}</Text>
-                <Text variant="body-default-xs" onBackground="neutral-weak">
-                  {saved.pipeline.length} operation{saved.pipeline.length !== 1 ? "s" : ""}{" · "}
-                  {new Date(saved.savedAt).toLocaleDateString()}
-                </Text>
-              </Column>
-              <Row gap="xs">
-                <Button size="s" variant="secondary" onClick={() => loadPipeline(saved)}>
-                  Load
-                </Button>
-                <IconButton
-                  icon="close"
-                  size="s"
-                  variant="ghost"
-                  tooltip="Delete"
-                  onClick={() => deleteSavedPipeline(saved.id)}
-                />
-              </Row>
-            </Row>
-          ))
-        )}
-      </Column>
 
       <Line />
 
