@@ -11,14 +11,34 @@ import {
   Heading,
   Line,
 } from "@once-ui-system/core";
-import { useState, useMemo, useRef, Fragment } from "react";
+import { useState, useMemo, useRef, useEffect, Fragment } from "react";
 import { OPERATIONS, OPERATION_CATEGORIES, processText } from "@/lib/textOperations";
 import type { PipelineItem } from "@/lib/textOperations";
+
+const STORAGE_KEY = "glyph-weaver-pipelines";
+
+interface SavedPipeline {
+  id: string;
+  name: string;
+  savedAt: number;
+  pipeline: PipelineItem[];
+}
 
 export default function Home() {
   const [inputText, setInputText] = useState("");
   const [pipeline, setPipeline] = useState<PipelineItem[]>([]);
+  const [pipelineName, setPipelineName] = useState("");
+  const [savedPipelines, setSavedPipelines] = useState<SavedPipeline[]>([]);
   const nextId = useRef(0);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) setSavedPipelines(JSON.parse(stored) as SavedPipeline[]);
+    } catch {
+      // ignore malformed storage
+    }
+  }, []);
 
   const outputText = useMemo(
     () => processText(inputText, pipeline),
@@ -56,6 +76,28 @@ export default function Home() {
       [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
       return next;
     });
+  };
+
+  const persist = (updated: SavedPipeline[]) => {
+    setSavedPipelines(updated);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  };
+
+  const savePipeline = () => {
+    const name = pipelineName.trim() || "Untitled";
+    const entry: SavedPipeline = { id: String(Date.now()), name, savedAt: Date.now(), pipeline };
+    const idx = savedPipelines.findIndex((s) => s.name === name);
+    persist(idx >= 0 ? savedPipelines.map((s, i) => (i === idx ? entry : s)) : [...savedPipelines, entry]);
+  };
+
+  const loadPipeline = (saved: SavedPipeline) => {
+    setPipeline(saved.pipeline);
+    setPipelineName(saved.name);
+    nextId.current = saved.pipeline.reduce((max, item) => Math.max(max, Number(item.instanceId)), -1) + 1;
+  };
+
+  const deleteSavedPipeline = (id: string) => {
+    persist(savedPipelines.filter((s) => s.id !== id));
   };
 
   return (
@@ -199,6 +241,67 @@ export default function Home() {
           })}
         </Column>
       </Row>
+
+      <Line />
+
+      <Column fillWidth gap="s">
+        <Heading variant="heading-strong-xs">Saved Pipelines</Heading>
+        <Row fillWidth gap="xs" vertical="center">
+          <Input
+            style={{ flex: 1 }}
+            id="pipeline-name"
+            placeholder="Name this pipeline..."
+            value={pipelineName}
+            onChange={(e) => setPipelineName(e.target.value)}
+            height="s"
+          />
+          <Button
+            size="s"
+            variant="secondary"
+            disabled={pipeline.length === 0}
+            onClick={savePipeline}
+          >
+            Save
+          </Button>
+        </Row>
+        {savedPipelines.length === 0 ? (
+          <Text variant="body-default-s" onBackground="neutral-weak">
+            No saved pipelines yet. Build a pipeline above and save it here.
+          </Text>
+        ) : (
+          savedPipelines.map((saved) => (
+            <Row
+              key={saved.id}
+              gap="s"
+              vertical="center"
+              horizontal="between"
+              padding="s"
+              border="neutral-alpha-medium"
+              radius="s"
+            >
+              <Column gap="2">
+                <Text variant="label-strong-s">{saved.name}</Text>
+                <Text variant="body-default-xs" onBackground="neutral-weak">
+                  {saved.pipeline.length} operation{saved.pipeline.length !== 1 ? "s" : ""}{" · "}
+                  {new Date(saved.savedAt).toLocaleDateString()}
+                </Text>
+              </Column>
+              <Row gap="xs">
+                <Button size="s" variant="secondary" onClick={() => loadPipeline(saved)}>
+                  Load
+                </Button>
+                <IconButton
+                  icon="close"
+                  size="s"
+                  variant="ghost"
+                  tooltip="Delete"
+                  onClick={() => deleteSavedPipeline(saved.id)}
+                />
+              </Row>
+            </Row>
+          ))
+        )}
+      </Column>
 
       <Line />
 
