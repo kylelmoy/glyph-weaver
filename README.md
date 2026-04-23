@@ -8,7 +8,7 @@ A browser-based text transformation playground. Build pipelines of operations �
 
 ## How it works
 
-Paste text into the **Input** box (one item per line), add operations from the **Operations** palette, and read the result in the **Output** box. Operations run sequentially — the output of each step feeds into the next.
+Paste text into the **Input** box, add operations from the **Operations** palette, and read the result in the **Output** box. Operations run sequentially — the output of each step feeds into the next.
 
 Pipelines can be named and saved to the browser's `localStorage`, then loaded or deleted later.
 
@@ -40,33 +40,3 @@ npm run biome-write  # auto-format with Biome
 - [Next.js 16](https://nextjs.org/) with React 19
 - [Once UI](https://once-ui.com/) design system
 - TypeScript 5, Biome
-
-### Project structure
-
-```
-src/
-├── app/
-│   ├── (main)/
-│   │   ├── layout.tsx        # root layout, theme init, metadata
-│   │   └── page.tsx          # main page — layout only
-│   └── api/og/
-│       ├── fetch/            # extracts metadata from a URL (edge)
-│       └── proxy/            # proxies external images with cache headers
-├── components/
-│   ├── Providers.tsx         # Once UI provider stack
-│   └── PipelineStep.tsx      # single operation card in the pipeline
-├── hooks/
-│   └── usePipeline.ts        # all pipeline state and localStorage logic
-├── lib/
-│   └── textOperations.ts     # operation registry, types, processText()
-└── resources/
-    ├── icons.ts              # icon library mappings
-    ├── once-ui.config.js     # theme and metadata config
-    └── custom.css            # CSS custom property overrides
-```
-
----
-
-## License
-
-MIT
