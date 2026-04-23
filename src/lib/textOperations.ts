@@ -1,27 +1,51 @@
+/** The five groupings shown in the Operations panel. */
 export type OperationCategory = "Sorting" | "Filtering" | "Whitespace" | "Case" | "Transformation";
 
+/** A single configurable input accepted by an operation. */
 export interface ParamDefinition {
+  /** State key used to read/write the value in `PipelineItem.params`. */
   key: string;
+  /** Human-readable label shown above the input field. */
   label: string;
   placeholder?: string;
+  /** When true, the input renders in a monospace font (useful for code expressions). */
   monospace?: boolean;
 }
 
+/** Blueprint for a text-processing operation — one entry in the OPERATIONS registry. */
 export interface OperationDefinition {
   id: string;
   name: string;
+  /** Short description shown as a tooltip or help text. */
   description: string;
   category: OperationCategory;
+  /** Optional list of user-configurable inputs. Omit for parameter-free operations. */
   params?: ParamDefinition[];
+  /** Pure function: receives the current line array and returns a transformed array. */
   apply: (lines: string[], params: Record<string, string>) => string[];
 }
 
+/** A single operation instance placed in the active pipeline. */
 export interface PipelineItem {
+  /** Unique ID scoped to the current session — used as a React key and for targeting updates. */
   instanceId: string;
+  /** References an `OperationDefinition.id` in the OPERATIONS registry. */
   operationId: string;
+  /** Maps each `ParamDefinition.key` to the user-supplied value. */
   params: Record<string, string>;
 }
 
+/** A pipeline snapshot persisted to localStorage. */
+export interface SavedPipeline {
+  /** Unique ID generated at save time (Date.now() string). */
+  id: string;
+  name: string;
+  /** Unix timestamp (ms) of when the pipeline was saved. */
+  savedAt: number;
+  pipeline: PipelineItem[];
+}
+
+/** Complete registry of available text operations, ordered within each category. */
 export const OPERATIONS: OperationDefinition[] = [
   // --- Sorting ---
   {
@@ -189,6 +213,7 @@ export const OPERATIONS: OperationDefinition[] = [
   },
 ];
 
+/** Display order for the Operations panel sidebar. */
 export const OPERATION_CATEGORIES: OperationCategory[] = [
   "Sorting",
   "Filtering",
@@ -197,6 +222,11 @@ export const OPERATION_CATEGORIES: OperationCategory[] = [
   "Transformation",
 ];
 
+/**
+ * Run the input string through every operation in the pipeline sequentially.
+ * Each operation receives the output of the previous one as its input.
+ * Returns an empty string when input is empty or the pipeline is empty.
+ */
 export function processText(input: string, pipeline: PipelineItem[]): string {
   if (!input) return "";
   const lines = input.split("\n");

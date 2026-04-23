@@ -1,5 +1,13 @@
 "use client";
 
+/**
+ * Home — the single-page UI for Glyph Weaver.
+ *
+ * Layout: Input textarea → Pipeline builder (left) + Operations palette (right) → Output textarea.
+ * All pipeline state lives in the `usePipeline` hook; text processing is a
+ * pure memoized derivation via `processText`.
+ */
+
 import {
   Column,
   Row,
@@ -11,95 +19,34 @@ import {
   Heading,
   Line,
 } from "@once-ui-system/core";
-import { useState, useMemo, useRef, useEffect, Fragment } from "react";
+import { useState, useMemo } from "react";
 import { OPERATIONS, OPERATION_CATEGORIES, processText } from "@/lib/textOperations";
-import type { PipelineItem } from "@/lib/textOperations";
-
-const STORAGE_KEY = "glyph-weaver-pipelines";
-
-interface SavedPipeline {
-  id: string;
-  name: string;
-  savedAt: number;
-  pipeline: PipelineItem[];
-}
+import { usePipeline } from "@/hooks/usePipeline";
+import { PipelineStep } from "@/components/PipelineStep";
 
 export default function Home() {
   const [inputText, setInputText] = useState("");
-  const [pipeline, setPipeline] = useState<PipelineItem[]>([]);
-  const [pipelineName, setPipelineName] = useState("");
-  const [savedPipelines, setSavedPipelines] = useState<SavedPipeline[]>([]);
-  const [showSaved, setShowSaved] = useState(false);
-  const nextId = useRef(0);
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) setSavedPipelines(JSON.parse(stored) as SavedPipeline[]);
-    } catch {
-      // ignore malformed storage
-    }
-  }, []);
+  const {
+    pipeline,
+    pipelineName,
+    setPipelineName,
+    savedPipelines,
+    showSaved,
+    setShowSaved,
+    addOperation,
+    updateParam,
+    removeOperation,
+    moveOperation,
+    savePipeline,
+    loadPipeline,
+    deleteSavedPipeline,
+  } = usePipeline();
 
   const outputText = useMemo(
     () => processText(inputText, pipeline),
     [inputText, pipeline],
   );
-
-  const addOperation = (operationId: string) => {
-    const op = OPERATIONS.find((o) => o.id === operationId);
-    const params: Record<string, string> = {};
-    for (const p of op?.params ?? []) params[p.key] = "";
-    setPipeline((prev) => [
-      ...prev,
-      { instanceId: String(nextId.current++), operationId, params },
-    ]);
-  };
-
-  const updateParam = (instanceId: string, key: string, value: string) => {
-    setPipeline((prev) =>
-      prev.map((item) =>
-        item.instanceId === instanceId
-          ? { ...item, params: { ...item.params, [key]: value } }
-          : item,
-      ),
-    );
-  };
-
-  const removeOperation = (instanceId: string) => {
-    setPipeline((prev) => prev.filter((item) => item.instanceId !== instanceId));
-  };
-
-  const moveOperation = (index: number, direction: "up" | "down") => {
-    setPipeline((prev) => {
-      const next = [...prev];
-      const targetIndex = direction === "up" ? index - 1 : index + 1;
-      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
-      return next;
-    });
-  };
-
-  const persist = (updated: SavedPipeline[]) => {
-    setSavedPipelines(updated);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  };
-
-  const savePipeline = () => {
-    const name = pipelineName.trim() || "Untitled";
-    const entry: SavedPipeline = { id: String(Date.now()), name, savedAt: Date.now(), pipeline };
-    const idx = savedPipelines.findIndex((s) => s.name === name);
-    persist(idx >= 0 ? savedPipelines.map((s, i) => (i === idx ? entry : s)) : [...savedPipelines, entry]);
-  };
-
-  const loadPipeline = (saved: SavedPipeline) => {
-    setPipeline(saved.pipeline);
-    setPipelineName(saved.name);
-    nextId.current = saved.pipeline.reduce((max, item) => Math.max(max, Number(item.instanceId)), -1) + 1;
-  };
-
-  const deleteSavedPipeline = (id: string) => {
-    persist(savedPipelines.filter((s) => s.id !== id));
-  };
 
   return (
     <Column
@@ -110,6 +57,7 @@ export default function Home() {
     >
       <Heading>Glyph Weaver</Heading>
 
+      {/* ── Input ── */}
       <Column fillWidth gap="s">
         <Heading variant="heading-strong-xs">Input</Heading>
         <Textarea
@@ -125,11 +73,13 @@ export default function Home() {
       <Line />
 
       <Row fillWidth gap="m" vertical="stretch">
-        {/* Active Pipeline */}
+        {/* ── Active Pipeline ── */}
         <Column flex={1} padding="m" radius="m">
           <Column fillWidth fillHeight>
             <Heading variant="heading-strong-xs" marginBottom="s">Pipeline</Heading>
+
             {pipeline.length === 0 ? (
+              // Empty state — shown before any operation is added
               <Column gap="s">
                 <Text variant="body-strong-s" onBackground="neutral-weak">
                   Welcome to Glyph Weaver!
@@ -146,75 +96,23 @@ export default function Home() {
                 const op = OPERATIONS.find((o) => o.id === item.operationId);
                 if (!op) return null;
                 return (
-                  <Fragment key={item.instanceId}>
-                    <Column
-                      gap="xs"
-                      padding="s"
-                      border="neutral-alpha-medium"
-                      radius="s"
-                    >
-                      <Row gap="s" vertical="center" horizontal="between">
-                        <Row gap="xs" vertical="center">
-                          <Text variant="body-default-s" onBackground="neutral-weak">
-                            {index + 1}.
-                          </Text>
-                          <Text variant="label-strong-s">{op.name}</Text>
-                        </Row>
-                        <Row gap="2">
-                          <IconButton
-                            icon="chevronUp"
-                            size="s"
-                            variant="ghost"
-                            tooltip="Move up"
-                            disabled={index === 0}
-                            onClick={() => moveOperation(index, "up")}
-                          />
-                          <IconButton
-                            icon="chevronDown"
-                            size="s"
-                            variant="ghost"
-                            tooltip="Move down"
-                            disabled={index === pipeline.length - 1}
-                            onClick={() => moveOperation(index, "down")}
-                          />
-                          <IconButton
-                            icon="close"
-                            size="s"
-                            variant="ghost"
-                            tooltip="Remove"
-                            onClick={() => removeOperation(item.instanceId)}
-                          />
-                        </Row>
-                      </Row>
-                      {op.params?.map((param) => (
-                        <Input
-                          key={param.key}
-                          id={`${item.instanceId}-${param.key}`}
-                          label={param.label}
-                          placeholder={param.placeholder}
-                          value={item.params[param.key] ?? ""}
-                          onChange={(e) =>
-                            updateParam(item.instanceId, param.key, e.target.value)
-                          }
-                          height="s"
-                          style={param.monospace ? { fontFamily: "var(--font-code)" } : undefined}
-                        />
-                      ))}
-                    </Column>
-                    {index < pipeline.length - 1 && (
-                      <Row fillWidth horizontal="center">
-                        <Column
-                          style={{ width: 2, height: 16 }}
-                          background="neutral-alpha-medium"
-                        />
-                      </Row>
-                    )}
-                  </Fragment>
+                  <PipelineStep
+                    key={item.instanceId}
+                    item={item}
+                    op={op}
+                    index={index}
+                    isFirst={index === 0}
+                    isLast={index === pipeline.length - 1}
+                    onUpdate={(key, value) => updateParam(item.instanceId, key, value)}
+                    onRemove={() => removeOperation(item.instanceId)}
+                    onMove={(direction) => moveOperation(index, direction)}
+                  />
                 );
               })
             )}
-
           </Column>
+
+          {/* ── Save / Load ── */}
           <Column fillWidth gap="xs" marginTop="m">
             <Line />
             <Row fillWidth vertical="center">
@@ -238,6 +136,7 @@ export default function Home() {
                 Save
               </Button>
             </Row>
+
             {savedPipelines.length > 0 && (
               <Column fillWidth gap="xs">
                 <Button
@@ -248,6 +147,7 @@ export default function Home() {
                 >
                   {savedPipelines.length} saved pipeline{savedPipelines.length !== 1 ? "s" : ""}
                 </Button>
+
                 {showSaved && (
                   <Column gap="xs">
                     {savedPipelines.map((saved) => (
@@ -288,7 +188,7 @@ export default function Home() {
           </Column>
         </Column>
 
-        {/* Available Operations */}
+        {/* ── Operations Palette ── */}
         <Column flex={1} gap="s" padding="m" radius="m">
           <Heading variant="heading-strong-xs">Operations</Heading>
           {OPERATION_CATEGORIES.map((category) => {
@@ -319,6 +219,7 @@ export default function Home() {
 
       <Line />
 
+      {/* ── Output ── */}
       <Column fillWidth gap="s">
         <Heading variant="heading-strong-xs">Output</Heading>
         <Textarea
@@ -329,7 +230,7 @@ export default function Home() {
         />
       </Column>
 
-
+      {/* ── Footer ── */}
       <Row as="footer" fillWidth padding="8" horizontal="center" s={{ direction: "column" }}>
         <Row
           maxWidth="m"
@@ -338,11 +239,7 @@ export default function Home() {
           gap="16"
           horizontal="between"
           vertical="center"
-          s={{
-            direction: "column",
-            horizontal: "center",
-            align: "center",
-          }}
+          s={{ direction: "column", horizontal: "center", align: "center" }}
         >
           <Text variant="body-default-s" onBackground="neutral-strong">
             <Text onBackground="neutral-weak">© 2026 /</Text>
@@ -350,7 +247,6 @@ export default function Home() {
           </Text>
           <Row gap="16">
             <IconButton
-              key="GitHub"
               href="https://github.com/kylelmoy/glyph-weaver"
               icon="github"
               tooltip="kylelmoy/glyph-weaver on GitHub"
@@ -358,7 +254,6 @@ export default function Home() {
               variant="ghost"
             />
             <IconButton
-              key="LinkedIn"
               href="https://www.linkedin.com/in/kylelmoy/"
               icon="linkedin"
               tooltip="Kyle Moy on LinkedIn"
@@ -366,7 +261,6 @@ export default function Home() {
               variant="ghost"
             />
             <IconButton
-              key="Bio"
               href="https://www.kylelmoy.com"
               icon="person"
               tooltip="Kyle Moy's Bio"
@@ -378,7 +272,5 @@ export default function Home() {
         <Row height="80" hide s={{ hide: false }} />
       </Row>
     </Column>
-
-
   );
 }
