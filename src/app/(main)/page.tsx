@@ -28,8 +28,9 @@ import { PipelineStep } from "@/components/PipelineStep";
 export default function Home() {
   const [inputText, setInputText] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    () => new Set(["Custom", "Sorting", "Filtering"]),
+    () => new Set(["Recent", "Custom", "Sorting", "Filtering"]),
   );
+  const [recentOperationIds, setRecentOperationIds] = useState<string[]>([]);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories((prev) => {
@@ -55,6 +56,13 @@ export default function Home() {
     loadPipeline,
     deleteSavedPipeline,
   } = usePipeline();
+
+  const addOperationAndTrack = (operationId: string) => {
+    addOperation(operationId);
+    setRecentOperationIds((prev) =>
+      [operationId, ...prev.filter((id) => id !== operationId)].slice(0, 6),
+    );
+  };
 
   const outputText = useMemo(
     () => processText(inputText, pipeline),
@@ -215,6 +223,45 @@ export default function Home() {
         {/* ── Operations Palette ── */}
         <Column flex={1} gap="s" padding="m" radius="m">
           <Heading variant="heading-strong-xs">Operations</Heading>
+
+          {/* Recent — only shown after at least one operation has been used */}
+          {recentOperationIds.length > 0 && (() => {
+            const isExpanded = expandedCategories.has("Recent");
+            return (
+              <Column gap="4">
+                <Row
+                  fillWidth
+                  vertical="center"
+                  horizontal="between"
+                  onClick={() => toggleCategory("Recent")}
+                  style={{ cursor: "pointer" }}
+                >
+                  <Text variant="label-default-xs" onBackground="neutral-weak">Recent</Text>
+                  <Icon name={isExpanded ? "chevronUp" : "chevronDown"} size="xs" onBackground="neutral-weak" />
+                </Row>
+                {isExpanded && (
+                  <Row wrap gap="xs">
+                    {recentOperationIds.map((id) => {
+                      const op = OPERATIONS.find((o) => o.id === id);
+                      if (!op) return null;
+                      return (
+                        <Button
+                          key={op.id}
+                          size="s"
+                          variant="secondary"
+                          suffixIcon="plus"
+                          onClick={() => addOperationAndTrack(op.id)}
+                        >
+                          {op.name}
+                        </Button>
+                      );
+                    })}
+                  </Row>
+                )}
+              </Column>
+            );
+          })()}
+
           {OPERATION_CATEGORIES.map((category) => {
             const ops = OPERATIONS.filter((op) => op.category === category);
             const isExpanded = expandedCategories.has(category);
@@ -242,7 +289,7 @@ export default function Home() {
                         size="s"
                         variant="secondary"
                         suffixIcon="plus"
-                        onClick={() => addOperation(op.id)}
+                        onClick={() => addOperationAndTrack(op.id)}
                       >
                         {op.name}
                       </Button>
