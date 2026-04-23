@@ -24,6 +24,7 @@ import { useState, useMemo } from "react";
 import { OPERATIONS, OPERATION_CATEGORIES, processText } from "@/lib/textOperations";
 import { usePipeline } from "@/hooks/usePipeline";
 import { PipelineStep } from "@/components/PipelineStep";
+import { Logo } from "@/components/Logo";
 
 export default function Home() {
   const [inputText, setInputText] = useState("");
@@ -76,7 +77,10 @@ export default function Home() {
       gap="l"
       style={{ maxWidth: 960, margin: "0 auto", minHeight: "100vh" }}
     >
-      <Heading>Glyph Weaver</Heading>
+      <Row vertical="center" gap="s">
+        <Logo size={32} />
+        <Heading>Glyph Weaver</Heading>
+      </Row>
 
       {/* ── Input | Output ── */}
       <Row fillWidth gap="m" vertical="stretch">
@@ -84,7 +88,7 @@ export default function Home() {
           <Heading variant="heading-strong-xs">Input</Heading>
           <Textarea
             id="input"
-            placeholder="Put text here, one item per line..."
+            placeholder="Put text here..."
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             lines={8}
