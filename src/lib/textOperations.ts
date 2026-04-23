@@ -1,5 +1,5 @@
 /** The five groupings shown in the Operations panel. */
-export type OperationCategory = "Sorting" | "Filtering" | "Whitespace" | "Case" | "Transformation";
+export type OperationCategory = "Sorting" | "Filtering" | "Whitespace" | "Case" | "Transformation" | "Custom";
 
 /** A single configurable input accepted by an operation. */
 export interface ParamDefinition {
@@ -85,6 +85,34 @@ export const OPERATIONS: OperationDefinition[] = [
     category: "Sorting",
     apply: (lines) => [...lines].reverse(),
   },
+  {
+    id: "sort-length-asc",
+    name: "Sort by Length ↑",
+    description: "Sort lines shortest to longest",
+    category: "Sorting",
+    apply: (lines) => [...lines].sort((a, b) => a.length - b.length),
+  },
+  {
+    id: "sort-length-desc",
+    name: "Sort by Length ↓",
+    description: "Sort lines longest to shortest",
+    category: "Sorting",
+    apply: (lines) => [...lines].sort((a, b) => b.length - a.length),
+  },
+  {
+    id: "shuffle",
+    name: "Shuffle",
+    description: "Randomize the order of lines (Fisher-Yates)",
+    category: "Sorting",
+    apply: (lines) => {
+      const arr = [...lines];
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    },
+  },
   // --- Filtering ---
   {
     id: "remove-duplicates",
@@ -124,6 +152,62 @@ export const OPERATIONS: OperationDefinition[] = [
       return lines.filter((line) => line.includes(query));
     },
   },
+  {
+    id: "keep-regex",
+    name: "Keep Lines Matching Regex",
+    description: "Keep only lines that match a regular expression",
+    category: "Filtering",
+    params: [{ key: "pattern", label: "Regex pattern", placeholder: "e.g. ^\\d+$", monospace: true }],
+    apply: (lines, params) => {
+      const pattern = params.pattern ?? "";
+      if (!pattern) return lines;
+      try {
+        const re = new RegExp(pattern);
+        return lines.filter((line) => re.test(line));
+      } catch {
+        return lines;
+      }
+    },
+  },
+  {
+    id: "remove-regex",
+    name: "Remove Lines Matching Regex",
+    description: "Remove lines that match a regular expression",
+    category: "Filtering",
+    params: [{ key: "pattern", label: "Regex pattern", placeholder: "e.g. ^\\s*#", monospace: true }],
+    apply: (lines, params) => {
+      const pattern = params.pattern ?? "";
+      if (!pattern) return lines;
+      try {
+        const re = new RegExp(pattern);
+        return lines.filter((line) => !re.test(line));
+      } catch {
+        return lines;
+      }
+    },
+  },
+  {
+    id: "keep-first-n",
+    name: "Keep First N Lines",
+    description: "Keep only the first N lines",
+    category: "Filtering",
+    params: [{ key: "count", label: "Number of lines", placeholder: "e.g. 10" }],
+    apply: (lines, params) => {
+      const n = Math.max(0, Number.parseInt(params.count ?? "") || 10);
+      return lines.slice(0, n);
+    },
+  },
+  {
+    id: "keep-last-n",
+    name: "Keep Last N Lines",
+    description: "Keep only the last N lines",
+    category: "Filtering",
+    params: [{ key: "count", label: "Number of lines", placeholder: "e.g. 10" }],
+    apply: (lines, params) => {
+      const n = Math.max(0, Number.parseInt(params.count ?? "") || 10);
+      return lines.slice(-n);
+    },
+  },
   // --- Whitespace ---
   {
     id: "trim-whitespace",
@@ -131,6 +215,13 @@ export const OPERATIONS: OperationDefinition[] = [
     description: "Remove leading and trailing whitespace from each line",
     category: "Whitespace",
     apply: (lines) => lines.map((line) => line.trim()),
+  },
+  {
+    id: "collapse-whitespace",
+    name: "Collapse Whitespace",
+    description: "Replace runs of whitespace with a single space and trim each line",
+    category: "Whitespace",
+    apply: (lines) => lines.map((line) => line.replace(/\s+/g, " ").trim()),
   },
   // --- Case ---
   {
@@ -146,6 +237,52 @@ export const OPERATIONS: OperationDefinition[] = [
     description: "Convert each line to lowercase",
     category: "Case",
     apply: (lines) => lines.map((line) => line.toLowerCase()),
+  },
+  {
+    id: "title-case",
+    name: "Title Case",
+    description: "Capitalize the first letter of every word",
+    category: "Case",
+    apply: (lines) =>
+      lines.map((line) =>
+        line.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()),
+      ),
+  },
+  {
+    id: "camel-case",
+    name: "camelCase",
+    description: "Convert to camelCase — splits on spaces, hyphens, and underscores",
+    category: "Case",
+    apply: (lines) =>
+      lines.map((line) =>
+        line
+          .trim()
+          .toLowerCase()
+          .split(/[\s\-_]+/)
+          .filter(Boolean)
+          .map((word, i) => (i === 0 ? word : word[0].toUpperCase() + word.slice(1)))
+          .join(""),
+      ),
+  },
+  {
+    id: "snake-case",
+    name: "snake_case",
+    description: "Convert to snake_case — replaces spaces and hyphens with underscores",
+    category: "Case",
+    apply: (lines) =>
+      lines.map((line) =>
+        line.trim().toLowerCase().replace(/[\s\-]+/g, "_"),
+      ),
+  },
+  {
+    id: "kebab-case",
+    name: "kebab-case",
+    description: "Convert to kebab-case — replaces spaces and underscores with hyphens",
+    category: "Case",
+    apply: (lines) =>
+      lines.map((line) =>
+        line.trim().toLowerCase().replace(/[\s_]+/g, "-"),
+      ),
   },
   // --- Transformation ---
   {
@@ -180,10 +317,80 @@ export const OPERATIONS: OperationDefinition[] = [
     },
   },
   {
+    id: "number-lines",
+    name: "Number Lines",
+    description: "Prepend a sequential number to each line",
+    category: "Transformation",
+    params: [
+      { key: "start", label: "Starting number", placeholder: "1" },
+      { key: "separator", label: "Separator", placeholder: ". " },
+    ],
+    apply: (lines, params) => {
+      const start = Number.parseInt(params.start ?? "") || 1;
+      const sep = params.separator !== undefined ? params.separator : ". ";
+      return lines.map((line, i) => `${start + i}${sep}${line}`);
+    },
+  },
+  {
+    id: "wrap-quotes",
+    name: "Wrap in Quotes",
+    description: "Surround each line with quote characters",
+    category: "Transformation",
+    params: [{ key: "quote", label: "Quote character", placeholder: '"' }],
+    apply: (lines, params) => {
+      const q = params.quote !== undefined && params.quote !== "" ? params.quote : '"';
+      return lines.map((line) => `${q}${line}${q}`);
+    },
+  },
+  {
+    id: "join-lines",
+    name: "Join Lines",
+    description: "Combine all lines into a single line with a separator",
+    category: "Transformation",
+    params: [{ key: "separator", label: "Separator", placeholder: ", " }],
+    apply: (lines, params) => {
+      const sep = params.separator !== undefined ? params.separator : ", ";
+      return [lines.join(sep)];
+    },
+  },
+  {
+    id: "split-by-delimiter",
+    name: "Split by Delimiter",
+    description: "Split each line into multiple lines on a delimiter",
+    category: "Transformation",
+    params: [{ key: "delimiter", label: "Delimiter", placeholder: "," }],
+    apply: (lines, params) => {
+      const delim = params.delimiter ?? "";
+      if (!delim) return lines;
+      return lines.flatMap((line) => line.split(delim));
+    },
+  },
+  {
+    id: "url-encode",
+    name: "URL Encode",
+    description: "Percent-encode each line for use in a URL",
+    category: "Transformation",
+    apply: (lines) => lines.map((line) => encodeURIComponent(line)),
+  },
+  {
+    id: "url-decode",
+    name: "URL Decode",
+    description: "Decode percent-encoded characters in each line",
+    category: "Transformation",
+    apply: (lines) =>
+      lines.map((line) => {
+        try {
+          return decodeURIComponent(line);
+        } catch {
+          return line;
+        }
+      }),
+  },
+  {
     id: "custom-js",
     name: "Custom Expression",
     description: "Transform each line with a JS expression — variable `line` holds the current line",
-    category: "Transformation",
+    category: "Custom",
     params: [
       {
         key: "code",
@@ -215,6 +422,7 @@ export const OPERATIONS: OperationDefinition[] = [
 
 /** Display order for the Operations panel sidebar. */
 export const OPERATION_CATEGORIES: OperationCategory[] = [
+  "Custom",
   "Sorting",
   "Filtering",
   "Whitespace",

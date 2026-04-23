@@ -16,11 +16,11 @@ Pipelines can be named and saved to the browser's `localStorage`, then loaded or
 
 | Category | Operations |
 |---|---|
-| Sorting | Sort A→Z, Sort Z→A, Sort Numerically ↑↓, Reverse Order |
-| Filtering | Remove Duplicates, Remove Empty Lines, Remove Lines Containing, Keep Lines Containing |
-| Whitespace | Trim Whitespace |
-| Case | Uppercase, Lowercase |
-| Transformation | Add Prefix, Add Suffix, Find and Replace, Custom Expression |
+| Sorting | Sort A→Z, Sort Z→A, Sort Numerically ↑↓, Sort by Length ↑↓, Reverse Order, Shuffle |
+| Filtering | Remove Duplicates, Remove Empty Lines, Remove/Keep Lines Containing, Remove/Keep Lines Matching Regex, Keep First/Last N Lines |
+| Whitespace | Trim Whitespace, Collapse Whitespace |
+| Case | Uppercase, Lowercase, Title Case, camelCase, snake_case, kebab-case |
+| Transformation | Add Prefix, Add Suffix, Find and Replace, Number Lines, Wrap in Quotes, Join Lines, Split by Delimiter, URL Encode, URL Decode, Custom Expression |
 
 **Custom Expression** evaluates an arbitrary JavaScript expression per line — the variable `line` holds the current line value. Errors on individual lines are silently skipped.
 
