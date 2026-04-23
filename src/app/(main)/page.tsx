@@ -3,7 +3,7 @@
 /**
  * Home — the single-page UI for Glyph Weaver.
  *
- * Layout: Input textarea → Pipeline builder (left) + Operations palette (right) → Output textarea.
+ * Layout: Input (left) | Output (right) → Pipeline builder (left) + Operations palette (right).
  * All pipeline state lives in the `usePipeline` hook; text processing is a
  * pure memoized derivation via `processText`.
  */
@@ -15,6 +15,7 @@ import {
   Input,
   Button,
   IconButton,
+  Icon,
   Text,
   Heading,
   Line,
@@ -26,6 +27,18 @@ import { PipelineStep } from "@/components/PipelineStep";
 
 export default function Home() {
   const [inputText, setInputText] = useState("");
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    () => new Set(["Custom", "Sorting", "Filtering"]),
+  );
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
+      return next;
+    });
+  };
 
   const {
     pipeline,
@@ -57,18 +70,29 @@ export default function Home() {
     >
       <Heading>Glyph Weaver</Heading>
 
-      {/* ── Input ── */}
-      <Column fillWidth gap="s">
-        <Heading variant="heading-strong-xs">Input</Heading>
-        <Textarea
-          id="input"
-          placeholder="Paste text here, one item per line..."
-          value={inputText}
-          onChange={(e) => setInputText(e.target.value)}
-          lines={8}
-          resize="vertical"
-        />
-      </Column>
+      {/* ── Input | Output ── */}
+      <Row fillWidth gap="m">
+        <Column flex={1} gap="s">
+          <Heading variant="heading-strong-xs">Input</Heading>
+          <Textarea
+            id="input"
+            placeholder="Paste text here, one item per line..."
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            lines={8}
+            resize="vertical"
+          />
+        </Column>
+        <Column flex={1} gap="s">
+          <Heading variant="heading-strong-xs">Output</Heading>
+          <Textarea
+            id="output"
+            value={outputText}
+            lines={8}
+            readOnly
+          />
+        </Column>
+      </Row>
 
       <Line />
 
@@ -193,42 +217,43 @@ export default function Home() {
           <Heading variant="heading-strong-xs">Operations</Heading>
           {OPERATION_CATEGORIES.map((category) => {
             const ops = OPERATIONS.filter((op) => op.category === category);
+            const isExpanded = expandedCategories.has(category);
             return (
               <Column key={category} gap="4">
-                <Text variant="label-default-xs" onBackground="neutral-weak">
-                  {category}
-                </Text>
-                <Row wrap gap="xs">
-                  {ops.map((op) => (
-                    <Button
-                      key={op.id}
-                      size="s"
-                      variant="secondary"
-                      suffixIcon="plus"
-                      onClick={() => addOperation(op.id)}
-                    >
-                      {op.name}
-                    </Button>
-                  ))}
+                <Row
+                  fillWidth
+                  vertical="center"
+                  horizontal="between"
+                  onClick={() => toggleCategory(category)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <Text variant="label-default-xs" onBackground="neutral-weak">
+                    {category}
+                  </Text>
+                  <Text variant="label-default-xs" onBackground="neutral-weak">
+                    <Icon name={isExpanded ? "chevronUp" : "chevronDown"} size="xs" onBackground="neutral-weak" />
+                  </Text>
                 </Row>
+                {isExpanded && (
+                  <Row wrap gap="xs">
+                    {ops.map((op) => (
+                      <Button
+                        key={op.id}
+                        size="s"
+                        variant="secondary"
+                        suffixIcon="plus"
+                        onClick={() => addOperation(op.id)}
+                      >
+                        {op.name}
+                      </Button>
+                    ))}
+                  </Row>
+                )}
               </Column>
             );
           })}
         </Column>
       </Row>
-
-      <Line />
-
-      {/* ── Output ── */}
-      <Column fillWidth gap="s">
-        <Heading variant="heading-strong-xs">Output</Heading>
-        <Textarea
-          id="output"
-          value={outputText}
-          lines={8}
-          readOnly
-        />
-      </Column>
 
       {/* ── Footer ── */}
       <Row as="footer" fillWidth padding="8" horizontal="center" s={{ direction: "column" }}>
