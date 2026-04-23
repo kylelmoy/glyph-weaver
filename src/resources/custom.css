@@ -1,3 +1,15 @@
+/* Makes a Once UI Textarea fill the remaining height of its flex-column parent. */
+.fill-height-textarea {
+  flex: 1;
+  min-height: 0;
+}
+.fill-height-textarea * {
+  height: 100%;
+}
+.fill-height-textarea textarea {
+  height: 100% !important;
+}
+
 /* :root {
   /*
   /* Example setup for custom colors */

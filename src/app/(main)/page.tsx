@@ -79,26 +79,29 @@ export default function Home() {
       <Heading>Glyph Weaver</Heading>
 
       {/* ── Input | Output ── */}
-      <Row fillWidth gap="m">
+      <Row fillWidth gap="m" vertical="stretch">
         <Column flex={1} gap="s">
           <Heading variant="heading-strong-xs">Input</Heading>
           <Textarea
             id="input"
-            placeholder="Paste text here, one item per line..."
+            placeholder="Put text here, one item per line..."
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             lines={8}
             resize="vertical"
           />
         </Column>
-        <Column flex={1} gap="s">
+        <Column flex={1} gap="s" fillHeight>
           <Heading variant="heading-strong-xs">Output</Heading>
-          <Textarea
-            id="output"
-            value={outputText}
-            lines={8}
-            readOnly
-          />
+          <div className="fill-height-textarea">
+            <Textarea
+              id="output"
+              placeholder="...and your transformed text appears here!"
+              value={outputText}
+              readOnly
+              resize="none"
+            />
+          </div>
         </Column>
       </Row>
 
