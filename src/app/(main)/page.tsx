@@ -74,7 +74,7 @@ export default function Home() {
     <Column
       fillWidth
       padding="l"
-      gap="l"
+      gap="m"
       style={{ maxWidth: 960, margin: "0 auto", minHeight: "100vh" }}
     >
       <Row vertical="center" gap="s">
@@ -84,7 +84,7 @@ export default function Home() {
 
       {/* ── Input | Output ── */}
       <Row fillWidth gap="m" vertical="stretch">
-        <Column flex={1} gap="s">
+        <Column flex={1} gap="xs">
           <Heading variant="heading-strong-xs">Input</Heading>
           <Textarea
             id="input"
@@ -94,8 +94,11 @@ export default function Home() {
             lines={8}
             resize="vertical"
           />
+          <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
+            {inputText.length} chars · {inputText === "" ? 0 : inputText.split("\n").length} lines
+          </Text>
         </Column>
-        <Column flex={1} gap="s" fillHeight>
+        <Column flex={1} gap="xs" fillHeight>
           <Heading variant="heading-strong-xs">Output</Heading>
           <div className="fill-height-textarea">
             <Textarea
@@ -106,6 +109,9 @@ export default function Home() {
               resize="none"
             />
           </div>
+          <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
+            {outputText.length} chars · {outputText === "" ? 0 : outputText.split("\n").length} lines
+          </Text>
         </Column>
       </Row>
 
