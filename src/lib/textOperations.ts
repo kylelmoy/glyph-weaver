@@ -1,5 +1,5 @@
 /** The five groupings shown in the Operations panel. */
-export type OperationCategory = "Sorting" | "Filtering" | "Whitespace" | "Case" | "Transformation" | "Format" | "Custom";
+export type OperationCategory = "Sorting" | "Filtering" | "Case" | "Edit" | "Format" | "Custom";
 
 /** A single configurable input accepted by an operation. */
 export interface ParamDefinition {
@@ -208,40 +208,19 @@ export const OPERATIONS: OperationDefinition[] = [
       return lines.slice(-n);
     },
   },
-  {
-    id: "extract-regex",
-    name: "Extract Regex Match",
-    description: "Replace each line with its first regex match; lines with no match are removed",
-    category: "Filtering",
-    params: [{ key: "pattern", label: "Regex pattern", placeholder: "e.g. \\d+", monospace: true }],
-    apply: (lines, params) => {
-      const pattern = params.pattern ?? "";
-      if (!pattern) return lines;
-      try {
-        const re = new RegExp(pattern);
-        return lines.flatMap((line) => {
-          const m = line.match(re);
-          if (!m) return [];
-          return [m[1] !== undefined ? m[1] : m[0]];
-        });
-      } catch {
-        return lines;
-      }
-    },
-  },
-  // --- Whitespace ---
+  // --- Edit ---
   {
     id: "trim-whitespace",
     name: "Trim Whitespace",
     description: "Remove leading and trailing whitespace from each line",
-    category: "Whitespace",
+    category: "Edit",
     apply: (lines) => lines.map((line) => line.trim()),
   },
   {
     id: "collapse-whitespace",
     name: "Collapse Whitespace",
     description: "Replace runs of whitespace with a single space and trim each line",
-    category: "Whitespace",
+    category: "Edit",
     apply: (lines) => lines.map((line) => line.replace(/\s+/g, " ").trim()),
   },
   // --- Case ---
@@ -305,12 +284,11 @@ export const OPERATIONS: OperationDefinition[] = [
         line.trim().toLowerCase().replace(/[\s_]+/g, "-"),
       ),
   },
-  // --- Transformation ---
   {
     id: "add-prefix",
     name: "Add Prefix",
     description: "Prepend text to the start of each line",
-    category: "Transformation",
+    category: "Edit",
     params: [{ key: "prefix", label: "Prefix", placeholder: "e.g. - " }],
     apply: (lines, params) => lines.map((line) => `${params.prefix ?? ""}${line}`),
   },
@@ -318,7 +296,7 @@ export const OPERATIONS: OperationDefinition[] = [
     id: "add-suffix",
     name: "Add Suffix",
     description: "Append text to the end of each line",
-    category: "Transformation",
+    category: "Edit",
     params: [{ key: "suffix", label: "Suffix", placeholder: "e.g. ," }],
     apply: (lines, params) => lines.map((line) => `${line}${params.suffix ?? ""}`),
   },
@@ -326,7 +304,7 @@ export const OPERATIONS: OperationDefinition[] = [
     id: "find-replace",
     name: "Find and Replace",
     description: "Replace all occurrences of a string in each line",
-    category: "Transformation",
+    category: "Edit",
     params: [
       { key: "find", label: "Find", placeholder: "Text to find" },
       { key: "replace", label: "Replace with", placeholder: "Replacement text" },
@@ -341,7 +319,7 @@ export const OPERATIONS: OperationDefinition[] = [
     id: "regex-replace",
     name: "Regex Find & Replace",
     description: "Replace regex matches in each line; use $1, $2 for capture groups",
-    category: "Transformation",
+    category: "Edit",
     params: [
       { key: "pattern", label: "Regex pattern", placeholder: "e.g. (\\w+)@(\\w+)", monospace: true },
       { key: "replace", label: "Replacement (use $1, $2…)", placeholder: "e.g. $2/$1", monospace: true },
@@ -360,10 +338,31 @@ export const OPERATIONS: OperationDefinition[] = [
     },
   },
   {
+    id: "extract-regex",
+    name: "Extract Regex Match",
+    description: "Replace each line with its first regex match; lines with no match are removed",
+    category: "Edit",
+    params: [{ key: "pattern", label: "Regex pattern", placeholder: "e.g. \\d+", monospace: true }],
+    apply: (lines, params) => {
+      const pattern = params.pattern ?? "";
+      if (!pattern) return lines;
+      try {
+        const re = new RegExp(pattern);
+        return lines.flatMap((line) => {
+          const m = line.match(re);
+          if (!m) return [];
+          return [m[1] !== undefined ? m[1] : m[0]];
+        });
+      } catch {
+        return lines;
+      }
+    },
+  },
+  {
     id: "number-lines",
     name: "Number Lines",
     description: "Prepend a sequential number to each line",
-    category: "Transformation",
+    category: "Edit",
     params: [
       { key: "start", label: "Starting number", placeholder: "1" },
       { key: "separator", label: "Separator", placeholder: ". " },
@@ -378,7 +377,7 @@ export const OPERATIONS: OperationDefinition[] = [
     id: "wrap-quotes",
     name: "Wrap in Quotes",
     description: "Surround each line with quote characters",
-    category: "Transformation",
+    category: "Edit",
     params: [{ key: "quote", label: "Quote character", placeholder: '"' }],
     apply: (lines, params) => {
       const q = params.quote !== undefined && params.quote !== "" ? params.quote : '"';
@@ -389,7 +388,7 @@ export const OPERATIONS: OperationDefinition[] = [
     id: "join-lines",
     name: "Join Lines",
     description: "Combine all lines into a single line with a separator",
-    category: "Transformation",
+    category: "Edit",
     params: [{ key: "separator", label: "Separator", placeholder: ", " }],
     apply: (lines, params) => {
       const sep = params.separator !== undefined ? params.separator : ", ";
@@ -400,7 +399,7 @@ export const OPERATIONS: OperationDefinition[] = [
     id: "split-by-delimiter",
     name: "Split by Delimiter",
     description: "Split each line into multiple lines on a delimiter",
-    category: "Transformation",
+    category: "Edit",
     params: [{ key: "delimiter", label: "Delimiter", placeholder: "," }],
     apply: (lines, params) => {
       const delim = params.delimiter ?? "";
@@ -412,14 +411,14 @@ export const OPERATIONS: OperationDefinition[] = [
     id: "url-encode",
     name: "URL Encode",
     description: "Percent-encode each line for use in a URL",
-    category: "Transformation",
+    category: "Edit",
     apply: (lines) => lines.map((line) => encodeURIComponent(line)),
   },
   {
     id: "url-decode",
     name: "URL Decode",
     description: "Decode percent-encoded characters in each line",
-    category: "Transformation",
+    category: "Edit",
     apply: (lines) =>
       lines.map((line) => {
         try {
@@ -433,7 +432,7 @@ export const OPERATIONS: OperationDefinition[] = [
     id: "base64-encode",
     name: "Base64 Encode",
     description: "Encode each line as Base64 (UTF-8 safe)",
-    category: "Transformation",
+    category: "Edit",
     apply: (lines) =>
       lines.map((line) => {
         const bytes = new TextEncoder().encode(line);
@@ -444,7 +443,7 @@ export const OPERATIONS: OperationDefinition[] = [
     id: "base64-decode",
     name: "Base64 Decode",
     description: "Decode Base64-encoded content in each line",
-    category: "Transformation",
+    category: "Edit",
     apply: (lines) =>
       lines.map((line) => {
         try {
@@ -635,9 +634,8 @@ export const OPERATION_CATEGORIES: OperationCategory[] = [
   "Custom",
   "Sorting",
   "Filtering",
-  "Whitespace",
   "Case",
-  "Transformation",
+  "Edit",
   "Format",
 ];
 
