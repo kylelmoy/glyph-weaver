@@ -25,6 +25,7 @@ import { OPERATIONS, OPERATION_CATEGORIES, processText } from "@/lib/textOperati
 import { usePipeline } from "@/hooks/usePipeline";
 import { PipelineStep } from "@/components/PipelineStep";
 import { Logo } from "@/components/Logo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export default function Home() {
   const [inputText, setInputText] = useState("");
@@ -77,9 +78,12 @@ export default function Home() {
       gap="m"
       style={{ maxWidth: 960, margin: "0 auto", minHeight: "100vh" }}
     >
-      <Row vertical="center" gap="s">
-        <Logo size={32} />
-        <Heading>Glyph Weaver</Heading>
+      <Row fillWidth vertical="center" horizontal="between">
+        <Row vertical="center" gap="s">
+          <Logo size={32} />
+          <Heading>Glyph Weaver</Heading>
+        </Row>
+        <ThemeToggle />
       </Row>
 
       {/* ── Input | Output ── */}
