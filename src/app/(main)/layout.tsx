@@ -5,7 +5,7 @@ import '@/resources/custom.css'
 import classNames from "classnames";
 
 import { baseURL, meta, fonts, style, dataStyle } from "@/resources/once-ui.config";
-import { Meta, Schema,  Column, Flex, Mask, MatrixFx} from "@once-ui-system/core";
+import { Meta, Schema, Column, Flex, Mask, MatrixFx } from "@once-ui-system/core";
 import { Providers } from '@/components/Providers';
 
 export async function generateMetadata() {
@@ -57,18 +57,18 @@ export default function RootLayout({
                   
                   // Set defaults from config
                   const config = ${JSON.stringify({
-                    theme: style.theme,
-                    brand: style.brand,
-                    accent: style.accent,
-                    neutral: style.neutral,
-                    solid: style.solid,
-                    'solid-style': style.solidStyle,
-                    border: style.border,
-                    surface: style.surface,
-                    transition: style.transition,
-                    scaling: style.scaling,
-                    'viz-style': dataStyle.variant,
-                  })};
+              theme: style.theme,
+              brand: style.brand,
+              accent: style.accent,
+              neutral: style.neutral,
+              solid: style.solid,
+              'solid-style': style.solidStyle,
+              border: style.border,
+              surface: style.surface,
+              transition: style.transition,
+              scaling: style.scaling,
+              'viz-style': dataStyle.variant,
+            })};
                   
                   // Apply default values
                   Object.entries(config).forEach(([key, value]) => {
@@ -108,10 +108,10 @@ export default function RootLayout({
       </head>
       <Providers>
         <Column as="body" background="page" fillWidth margin="0" padding="0">
-          <Column style={{maxHeight: "100dvh"}} fillWidth aspectRatio="1" horizontal="center" position="absolute" top="0" left="0">
-            <Mask maxWidth="m" x={50} y={0} radius={50}>
+          <Column style={{ maxHeight: "100dvh" }} fillWidth aspectRatio="1" horizontal="center" position="absolute" top="0" left="0">
+            <Mask maxWidth="m" x={50} y={0} radius={30}>
               <MatrixFx
-                size={1.5}
+                size={2}
                 spacing={5}
                 fps={24}
                 colors={["brand-solid-strong"]}
