@@ -264,6 +264,7 @@ export default function Home() {
                           variant="secondary"
                           suffixIcon="plus"
                           onClick={() => addOperationAndTrack(op.id)}
+                          title={op.description}
                         >
                           {op.name}
                         </Button>
@@ -303,6 +304,7 @@ export default function Home() {
                         variant="secondary"
                         suffixIcon="plus"
                         onClick={() => addOperationAndTrack(op.id)}
+                        title={op.description}
                       >
                         {op.name}
                       </Button>

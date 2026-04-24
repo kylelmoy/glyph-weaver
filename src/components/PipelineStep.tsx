@@ -43,7 +43,9 @@ export function PipelineStep({
             <Text variant="body-default-s" onBackground="neutral-weak">
               {index + 1}.
             </Text>
-            <Text variant="label-strong-s">{op.name}</Text>
+            <Text variant="label-strong-s" title={op.description}>
+              {op.name}
+            </Text>
           </Row>
           <Row gap="2">
             <IconButton
