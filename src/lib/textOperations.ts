@@ -1,5 +1,5 @@
 /** The five groupings shown in the Operations panel. */
-export type OperationCategory = "Sorting" | "Filtering" | "Whitespace" | "Case" | "Transformation" | "Custom";
+export type OperationCategory = "Sorting" | "Filtering" | "Whitespace" | "Case" | "Transformation" | "Format" | "Custom";
 
 /** A single configurable input accepted by an operation. */
 export interface ParamDefinition {
@@ -208,6 +208,27 @@ export const OPERATIONS: OperationDefinition[] = [
       return lines.slice(-n);
     },
   },
+  {
+    id: "extract-regex",
+    name: "Extract Regex Match",
+    description: "Replace each line with its first regex match; lines with no match are removed",
+    category: "Filtering",
+    params: [{ key: "pattern", label: "Regex pattern", placeholder: "e.g. \\d+", monospace: true }],
+    apply: (lines, params) => {
+      const pattern = params.pattern ?? "";
+      if (!pattern) return lines;
+      try {
+        const re = new RegExp(pattern);
+        return lines.flatMap((line) => {
+          const m = line.match(re);
+          if (!m) return [];
+          return [m[1] !== undefined ? m[1] : m[0]];
+        });
+      } catch {
+        return lines;
+      }
+    },
+  },
   // --- Whitespace ---
   {
     id: "trim-whitespace",
@@ -317,6 +338,28 @@ export const OPERATIONS: OperationDefinition[] = [
     },
   },
   {
+    id: "regex-replace",
+    name: "Regex Find & Replace",
+    description: "Replace regex matches in each line; use $1, $2 for capture groups",
+    category: "Transformation",
+    params: [
+      { key: "pattern", label: "Regex pattern", placeholder: "e.g. (\\w+)@(\\w+)", monospace: true },
+      { key: "replace", label: "Replacement (use $1, $2…)", placeholder: "e.g. $2/$1", monospace: true },
+      { key: "flags", label: "Flags", placeholder: "g" },
+    ],
+    apply: (lines, params) => {
+      const pattern = params.pattern ?? "";
+      if (!pattern) return lines;
+      const flags = /^[gimsuy]*$/.test(params.flags ?? "") ? (params.flags ?? "g") : "g";
+      try {
+        const re = new RegExp(pattern, flags);
+        return lines.map((line) => line.replace(re, params.replace ?? ""));
+      } catch {
+        return lines;
+      }
+    },
+  },
+  {
     id: "number-lines",
     name: "Number Lines",
     description: "Prepend a sequential number to each line",
@@ -387,6 +430,33 @@ export const OPERATIONS: OperationDefinition[] = [
       }),
   },
   {
+    id: "base64-encode",
+    name: "Base64 Encode",
+    description: "Encode each line as Base64 (UTF-8 safe)",
+    category: "Transformation",
+    apply: (lines) =>
+      lines.map((line) => {
+        const bytes = new TextEncoder().encode(line);
+        return btoa(Array.from(bytes, (b) => String.fromCodePoint(b)).join(""));
+      }),
+  },
+  {
+    id: "base64-decode",
+    name: "Base64 Decode",
+    description: "Decode Base64-encoded content in each line",
+    category: "Transformation",
+    apply: (lines) =>
+      lines.map((line) => {
+        try {
+          const binStr = atob(line.trim());
+          const bytes = Uint8Array.from(binStr, (c) => c.codePointAt(0)!);
+          return new TextDecoder().decode(bytes);
+        } catch {
+          return line;
+        }
+      }),
+  },
+  {
     id: "custom-js",
     name: "Custom Expression",
     description: "Transform each line with a JS expression — variable `line` holds the current line",
@@ -418,6 +488,146 @@ export const OPERATIONS: OperationDefinition[] = [
       }
     },
   },
+  // --- Format ---
+  {
+    id: "tsv-extract-column",
+    name: "Extract TSV Column",
+    description: "Extract a single column from tab-separated values (1-indexed)",
+    category: "Format",
+    params: [{ key: "column", label: "Column number (1-indexed)", placeholder: "1" }],
+    apply: (lines, params) => {
+      const col = Math.max(1, Number.parseInt(params.column ?? "") || 1) - 1;
+      return lines.map((line) => line.split("\t")[col] ?? "");
+    },
+  },
+  {
+    id: "tsv-sort-by-column",
+    name: "Sort by TSV Column",
+    description: "Sort tab-separated lines by a specific column value",
+    category: "Format",
+    params: [
+      { key: "column", label: "Column number (1-indexed)", placeholder: "1" },
+      { key: "numeric", label: "Numeric sort? (yes/no)", placeholder: "no" },
+    ],
+    apply: (lines, params) => {
+      const col = Math.max(1, Number.parseInt(params.column ?? "") || 1) - 1;
+      const numeric = (params.numeric ?? "").toLowerCase().startsWith("y");
+      return [...lines].sort((a, b) => {
+        const av = a.split("\t")[col] ?? "";
+        const bv = b.split("\t")[col] ?? "";
+        if (numeric) return Number.parseFloat(av) - Number.parseFloat(bv);
+        return av.localeCompare(bv, undefined, { sensitivity: "base" });
+      });
+    },
+  },
+  {
+    id: "tsv-to-csv",
+    name: "TSV → CSV",
+    description: "Convert tab-separated values to comma-separated values",
+    category: "Format",
+    apply: (lines) =>
+      lines.map((line) =>
+        line
+          .split("\t")
+          .map((cell) => {
+            if (cell.includes(",") || cell.includes('"') || cell.includes("\n"))
+              return `"${cell.replace(/"/g, '""')}"`;
+            return cell;
+          })
+          .join(","),
+      ),
+  },
+  {
+    id: "csv-to-tsv",
+    name: "CSV → TSV",
+    description: "Convert comma-separated values to tab-separated values",
+    category: "Format",
+    apply: (lines) =>
+      lines.map((line) => {
+        const cells: string[] = [];
+        let cur = "";
+        let inQuote = false;
+        for (let i = 0; i < line.length; i++) {
+          const ch = line[i];
+          if (inQuote) {
+            if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+            else if (ch === '"') { inQuote = false; }
+            else { cur += ch; }
+          } else {
+            if (ch === '"') { inQuote = true; }
+            else if (ch === ",") { cells.push(cur); cur = ""; }
+            else { cur += ch; }
+          }
+        }
+        cells.push(cur);
+        return cells.join("\t");
+      }),
+  },
+  {
+    id: "tsv-to-json-array",
+    name: "TSV → JSON Array",
+    description: "Convert tab-separated lines to a JSON array of objects (first line = keys)",
+    category: "Format",
+    apply: (lines) => {
+      if (lines.length < 2) return lines;
+      const keys = lines[0].split("\t");
+      const records = lines.slice(1).map((line) => {
+        const values = line.split("\t");
+        return Object.fromEntries(keys.map((key, i) => [key, values[i] ?? ""]));
+      });
+      return [JSON.stringify(records, null, 2)].flatMap((s) => s.split("\n"));
+    },
+  },
+  {
+    id: "lines-to-json-array",
+    name: "Lines → JSON Array",
+    description: "Wrap all lines as a JSON string array",
+    category: "Format",
+    apply: (lines) => [JSON.stringify(lines)],
+  },
+  {
+    id: "json-array-to-lines",
+    name: "JSON Array → Lines",
+    description: "Expand a JSON array into one item per line",
+    category: "Format",
+    apply: (lines) => {
+      try {
+        const parsed: unknown = JSON.parse(lines.join("\n"));
+        if (Array.isArray(parsed)) {
+          return parsed.map((item) =>
+            typeof item === "string" ? item : JSON.stringify(item),
+          );
+        }
+      } catch { /* fall through */ }
+      return lines;
+    },
+  },
+  {
+    id: "json-pretty",
+    name: "JSON Pretty Print",
+    description: "Re-format JSON with 2-space indentation",
+    category: "Format",
+    apply: (lines) => {
+      try {
+        return JSON.stringify(JSON.parse(lines.join("\n")), null, 2).split("\n");
+      } catch {
+        return lines;
+      }
+    },
+  },
+  {
+    id: "json-minify",
+    name: "JSON Minify",
+    description: "Compact JSON onto a single line",
+    category: "Format",
+    apply: (lines) => {
+      try {
+        return [JSON.stringify(JSON.parse(lines.join("\n")))];
+      } catch {
+        return lines;
+      }
+    },
+  },
 ];
 
 /** Display order for the Operations panel sidebar. */
@@ -428,6 +638,7 @@ export const OPERATION_CATEGORIES: OperationCategory[] = [
   "Whitespace",
   "Case",
   "Transformation",
+  "Format",
 ];
 
 /**
