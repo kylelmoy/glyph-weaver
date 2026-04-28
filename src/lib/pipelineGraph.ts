@@ -79,7 +79,8 @@ export function processGraph(input: string, graph: PipelineGraph): string[] {
   }
   const topoOrder: string[] = [];
   while (queue.length > 0) {
-    const current = queue.shift()!;
+    const current = queue.shift();
+    if (current === undefined) break;
     topoOrder.push(current);
     for (const child of childrenOf.get(current) ?? []) {
       const newDeg = (inDegree.get(child) ?? 1) - 1;
@@ -99,8 +100,10 @@ export function processGraph(input: string, graph: PipelineGraph): string[] {
   const nodeById = new Map(graph.nodes.map((n) => [n.id, n]));
 
   for (const id of topoOrder) {
-    const node = nodeById.get(id)!;
-    const sourceText = parentOf.has(id) ? (outputCache.get(parentOf.get(id)!) ?? input) : input;
+    const node = nodeById.get(id);
+    if (!node) continue;
+    const parentId = parentOf.get(id);
+    const sourceText = parentId !== undefined ? (outputCache.get(parentId) ?? input) : input;
     const op = OPERATIONS.find((o) => o.id === node.operationId);
     const lines = sourceText === "" ? [] : sourceText.split("\n");
     const resultLines = op ? op.apply(lines, node.params) : lines;
@@ -159,7 +162,8 @@ export function graphToLinearItems(graph: PipelineGraph): PipelineItem[] {
   }
   const order: string[] = [];
   while (queue.length > 0) {
-    const id = queue.shift()!;
+    const id = queue.shift();
+    if (id === undefined) break;
     order.push(id);
     for (const child of childrenOf.get(id) ?? []) {
       const d = (inDegree.get(child) ?? 1) - 1;
@@ -169,9 +173,10 @@ export function graphToLinearItems(graph: PipelineGraph): PipelineItem[] {
   }
 
   const nodeById = new Map(graph.nodes.map((n) => [n.id, n]));
-  return order.map((id) => {
-    const n = nodeById.get(id)!;
-    return { instanceId: n.id, operationId: n.operationId, params: n.params };
+  return order.flatMap((id) => {
+    const n = nodeById.get(id);
+    if (!n) return [];
+    return [{ instanceId: n.id, operationId: n.operationId, params: n.params }];
   });
 }
 
