@@ -162,7 +162,7 @@ export default function Home() {
           </Column>
 
           {/* ── Save / Load ── */}
-          <Column fillWidth gap="xs" marginTop="m">
+          <Column fillWidth gap="xs" marginTop="m" s={{ hide: true }}>
             <Line />
             <Row fillWidth vertical="center">
               <Input
@@ -320,6 +320,69 @@ export default function Home() {
           })}
         </Column>
       </Row>
+
+      {/* ── Save / Load (mobile) ── */}
+      <Column fillWidth gap="s" hide s={{ hide: false }}>
+        <Line />
+        <Heading variant="heading-strong-xs" marginTop="m">Save Pipeline</Heading>
+        <Row fillWidth vertical="center">
+          <Input
+            style={{ flex: 1 }}
+            id="pipeline-name-mobile"
+            placeholder="Name this pipeline..."
+            value={pipelineName}
+            onChange={(e) => setPipelineName(e.target.value)}
+            height="s"
+            radius="left"
+          />
+          <Button
+            size="l"
+            prefixIcon="save"
+            variant="secondary"
+            disabled={pipeline.length === 0}
+            onClick={savePipeline}
+            radius="right"
+          >
+            Save
+          </Button>
+        </Row>
+
+        {savedPipelines.length > 0 && (
+          <Column fillWidth gap="xs">
+            {savedPipelines.map((saved) => (
+              <Row
+                key={saved.id}
+                gap="s"
+                vertical="center"
+                horizontal="between"
+                padding="s"
+                border="neutral-alpha-medium"
+                radius="s"
+              >
+                <Column gap="2">
+                  <Text variant="label-strong-s">{saved.name}</Text>
+                  <Text variant="body-default-xs" onBackground="neutral-weak">
+                    {saved.pipeline.length} operation{saved.pipeline.length !== 1 ? "s" : ""}{" · "}
+                    {new Date(saved.savedAt).toLocaleDateString()}
+                  </Text>
+                </Column>
+                <Row gap="xs">
+                  <Button size="s" variant="secondary" onClick={() => loadPipeline(saved)}>
+                    Load
+                  </Button>
+                  <IconButton
+                    icon="close"
+                    size="s"
+                    variant="ghost"
+                    tooltip="Delete"
+                    onClick={() => deleteSavedPipeline(saved.id)}
+                  />
+                </Row>
+              </Row>
+            ))}
+          </Column>
+        )}
+      </Column>
 
       {/* ── Footer ── */}
       <Row as="footer" fillWidth padding="8" horizontal="center" s={{ direction: "column" }}>
