@@ -33,7 +33,14 @@ export function usePipeline() {
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) setSavedPipelines(JSON.parse(stored) as AnyPersistedPipeline[]);
+      if (!stored) return;
+      const raw = JSON.parse(stored) as AnyPersistedPipeline[];
+      // Eagerly migrate any v1 entries to v2 and write back so future loads are clean.
+      const migrated = raw.map((entry) =>
+        isSavedPipelineV2(entry) ? entry : migrateSavedPipeline(entry),
+      );
+      setSavedPipelines(migrated);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
     } catch {
       // Ignore malformed storage data.
     }

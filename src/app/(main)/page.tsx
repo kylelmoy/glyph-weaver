@@ -245,7 +245,7 @@ export default function Home() {
                 size="l"
                 prefixIcon="save"
                 variant="secondary"
-                disabled={pipeline.length === 0}
+                disabled={graph.nodes.length === 0}
                 onClick={savePipeline}
                 radius="right"
               >
@@ -282,7 +282,7 @@ export default function Home() {
                             {isSavedPipelineV2(saved)
                               ? saved.graph.nodes.length
                               : saved.pipeline.length}{" "}
-                            operation
+                            op
                             {(isSavedPipelineV2(saved)
                               ? saved.graph.nodes.length
                               : saved.pipeline.length) !== 1
@@ -451,8 +451,7 @@ export default function Home() {
                 <Column gap="2">
                   <Text variant="label-strong-s">{saved.name}</Text>
                   <Text variant="body-default-xs" onBackground="neutral-weak">
-                    {isSavedPipelineV2(saved) ? saved.graph.nodes.length : saved.pipeline.length}{" "}
-                    operation
+                    {isSavedPipelineV2(saved) ? saved.graph.nodes.length : saved.pipeline.length} op
                     {(isSavedPipelineV2(saved)
                       ? saved.graph.nodes.length
                       : saved.pipeline.length) !== 1
