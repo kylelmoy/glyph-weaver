@@ -54,8 +54,14 @@ export function isSavedPipelineV2(p: AnyPersistedPipeline): p is SavedPipelineV2
  *
  * Returns `[""]` when the graph is empty or a cycle is detected.
  */
-export function processGraph(input: string, graph: PipelineGraph): string[] {
-  if (graph.nodes.length === 0) return [""];
+export interface GraphOutput {
+  /** The node ID of the leaf that produced this output. Stable React key. */
+  id: string;
+  text: string;
+}
+
+export function processGraph(input: string, graph: PipelineGraph): GraphOutput[] {
+  if (graph.nodes.length === 0) return [{ id: "__empty__", text: "" }];
 
   // Build adjacency structures in one pass over edges.
   const childrenOf = new Map<string, string[]>();
@@ -92,7 +98,7 @@ export function processGraph(input: string, graph: PipelineGraph): string[] {
   if (topoOrder.length !== graph.nodes.length) {
     // Cycle detected — graph is not a valid DAG.
     console.warn("processGraph: cycle detected, returning empty output");
-    return [""];
+    return [{ id: "__cycle__", text: "" }];
   }
 
   // Process nodes in topological order.
@@ -112,7 +118,9 @@ export function processGraph(input: string, graph: PipelineGraph): string[] {
 
   // Collect leaf nodes (nodes with no children) in topo order.
   const leaves = topoOrder.filter((id) => (childrenOf.get(id)?.length ?? 0) === 0);
-  return leaves.length > 0 ? leaves.map((id) => outputCache.get(id) ?? "") : [""];
+  return leaves.length > 0
+    ? leaves.map((id) => ({ id, text: outputCache.get(id) ?? "" }))
+    : [{ id: "__empty__", text: "" }];
 }
 
 // ── Conversion helpers ────────────────────────────────────────────────────────

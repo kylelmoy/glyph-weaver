@@ -12,8 +12,9 @@ import { Logo } from "@/components/Logo";
 import { PipelineStep } from "@/components/PipelineStep";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { usePipeline } from "@/hooks/usePipeline";
-import { isSavedPipelineV2 } from "@/lib/pipelineGraph";
-import { OPERATIONS, OPERATION_CATEGORIES, processText } from "@/lib/textOperations";
+import { isSavedPipelineV2, processGraph } from "@/lib/pipelineGraph";
+import type { GraphOutput } from "@/lib/pipelineGraph";
+import { OPERATIONS, OPERATION_CATEGORIES } from "@/lib/textOperations";
 import {
   Button,
   Column,
@@ -45,6 +46,7 @@ export default function Home() {
   };
 
   const {
+    graph,
     pipeline,
     pipelineName,
     setPipelineName,
@@ -67,7 +69,7 @@ export default function Home() {
     );
   };
 
-  const outputText = useMemo(() => processText(inputText, pipeline), [inputText, pipeline]);
+  const outputs = useMemo(() => processGraph(inputText, graph), [inputText, graph]);
 
   return (
     <Column
@@ -101,20 +103,45 @@ export default function Home() {
           </Text>
         </Column>
         <Column flex={1} gap="xs" fillHeight>
-          <Heading variant="heading-strong-xs">Output</Heading>
-          <div className="fill-height-textarea">
-            <Textarea
-              id="output"
-              placeholder="...and your transformed text appears here!"
-              value={outputText}
-              readOnly
-              resize="none"
-            />
-          </div>
-          <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
-            {outputText.length} chars · {outputText === "" ? 0 : outputText.split("\n").length}{" "}
-            lines
-          </Text>
+          <Heading variant="heading-strong-xs">
+            {outputs.length > 1 ? `Outputs (${outputs.length})` : "Output"}
+          </Heading>
+          {outputs.length === 1 ? (
+            <>
+              <div className="fill-height-textarea">
+                <Textarea
+                  id="output"
+                  placeholder="...and your transformed text appears here!"
+                  value={outputs[0].text}
+                  readOnly
+                  resize="none"
+                />
+              </div>
+              <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
+                {outputs[0].text.length} chars ·{" "}
+                {outputs[0].text === "" ? 0 : outputs[0].text.split("\n").length} lines
+              </Text>
+            </>
+          ) : (
+            outputs.map((out: GraphOutput, i: number) => (
+              <Column key={out.id} gap="xs">
+                <Text variant="label-default-xs" onBackground="neutral-weak">
+                  Output {i + 1}
+                </Text>
+                <Textarea
+                  id={`output-${out.id}`}
+                  value={out.text}
+                  readOnly
+                  resize="vertical"
+                  lines={4}
+                />
+                <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
+                  {out.text.length} chars · {out.text === "" ? 0 : out.text.split("\n").length}{" "}
+                  lines
+                </Text>
+              </Column>
+            ))
+          )}
         </Column>
       </Row>
 
