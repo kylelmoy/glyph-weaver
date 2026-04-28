@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@once-ui-system/core": "latest",
+    "@xyflow/react": "^12.10.2",
     "classnames": "^2.5.1",
     "next": "^16.1.1",
     "react": "^19.2.1",

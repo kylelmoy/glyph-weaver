@@ -9,6 +9,7 @@
  */
 
 import { Logo } from "@/components/Logo";
+import { PipelineFlowEditor } from "@/components/PipelineFlowEditor";
 import { PipelineStep } from "@/components/PipelineStep";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { usePipeline } from "@/hooks/usePipeline";
@@ -27,7 +28,7 @@ import {
   Text,
   Textarea,
 } from "@once-ui-system/core";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 export default function Home() {
   const [inputText, setInputText] = useState("");
@@ -45,8 +46,11 @@ export default function Home() {
     });
   };
 
+  const [viewMode, setViewMode] = useState<"list" | "flow">("list");
+
   const {
     graph,
+    setGraph,
     pipeline,
     pipelineName,
     setPipelineName,
@@ -61,6 +65,16 @@ export default function Home() {
     loadPipeline,
     deleteSavedPipeline,
   } = usePipeline();
+
+  const handleUpdateParam = useCallback(
+    (nodeId: string, key: string, value: string) => updateParam(nodeId, key, value),
+    [updateParam],
+  );
+
+  const handleRemoveNode = useCallback(
+    (nodeId: string) => removeOperation(nodeId),
+    [removeOperation],
+  );
 
   const addOperationAndTrack = (operationId: string) => {
     addOperation(operationId);
@@ -151,11 +165,34 @@ export default function Home() {
         {/* ── Active Pipeline ── */}
         <Column flex={1} padding="m" radius="m">
           <Column fillWidth fillHeight>
-            <Heading variant="heading-strong-xs" marginBottom="s">
-              Pipeline
-            </Heading>
+            <Row fillWidth vertical="center" horizontal="between" marginBottom="s">
+              <Heading variant="heading-strong-xs">Pipeline</Heading>
+              <Row gap="xs">
+                <Button
+                  size="s"
+                  variant={viewMode === "list" ? "primary" : "secondary"}
+                  onClick={() => setViewMode("list")}
+                >
+                  List
+                </Button>
+                <Button
+                  size="s"
+                  variant={viewMode === "flow" ? "primary" : "secondary"}
+                  onClick={() => setViewMode("flow")}
+                >
+                  Flow
+                </Button>
+              </Row>
+            </Row>
 
-            {pipeline.length === 0 ? (
+            {viewMode === "flow" ? (
+              <PipelineFlowEditor
+                graph={graph}
+                onGraphChange={setGraph}
+                onUpdateParam={handleUpdateParam}
+                onRemoveNode={handleRemoveNode}
+              />
+            ) : pipeline.length === 0 ? (
               // Empty state — shown before any operation is added
               <Column gap="s">
                 <Text variant="body-strong-s" onBackground="neutral-weak">

@@ -128,6 +128,28 @@ export function usePipeline() {
     });
   }
 
+  function updateNodePosition(nodeId: string, position: { x: number; y: number }) {
+    setGraph((prev) => ({
+      ...prev,
+      nodes: prev.nodes.map((n) => (n.id === nodeId ? { ...n, position } : n)),
+    }));
+  }
+
+  function addGraphEdge(source: string, target: string) {
+    const id = `e-${source}-${target}-${Date.now()}`;
+    setGraph((prev) => ({
+      ...prev,
+      edges: [...prev.edges, { id, source, target }],
+    }));
+  }
+
+  function removeGraphEdge(edgeId: string) {
+    setGraph((prev) => ({
+      ...prev,
+      edges: prev.edges.filter((e) => e.id !== edgeId),
+    }));
+  }
+
   function savePipeline() {
     const name = pipelineName.trim() || "Untitled";
     const entry: SavedPipelineV2 = {
@@ -167,6 +189,9 @@ export function usePipeline() {
     updateParam,
     removeOperation,
     moveOperation,
+    updateNodePosition,
+    addGraphEdge,
+    removeGraphEdge,
     savePipeline,
     loadPipeline,
     deleteSavedPipeline,
