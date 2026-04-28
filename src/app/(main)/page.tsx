@@ -8,24 +8,25 @@
  * pure memoized derivation via `processText`.
  */
 
-import {
-  Column,
-  Row,
-  Textarea,
-  Input,
-  Button,
-  IconButton,
-  Icon,
-  Text,
-  Heading,
-  Line,
-} from "@once-ui-system/core";
-import { useState, useMemo } from "react";
-import { OPERATIONS, OPERATION_CATEGORIES, processText } from "@/lib/textOperations";
-import { usePipeline } from "@/hooks/usePipeline";
-import { PipelineStep } from "@/components/PipelineStep";
 import { Logo } from "@/components/Logo";
+import { PipelineStep } from "@/components/PipelineStep";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { usePipeline } from "@/hooks/usePipeline";
+import { isSavedPipelineV2 } from "@/lib/pipelineGraph";
+import { OPERATIONS, OPERATION_CATEGORIES, processText } from "@/lib/textOperations";
+import {
+  Button,
+  Column,
+  Heading,
+  Icon,
+  IconButton,
+  Input,
+  Line,
+  Row,
+  Text,
+  Textarea,
+} from "@once-ui-system/core";
+import { useMemo, useState } from "react";
 
 export default function Home() {
   const [inputText, setInputText] = useState("");
@@ -66,10 +67,7 @@ export default function Home() {
     );
   };
 
-  const outputText = useMemo(
-    () => processText(inputText, pipeline),
-    [inputText, pipeline],
-  );
+  const outputText = useMemo(() => processText(inputText, pipeline), [inputText, pipeline]);
 
   return (
     <Column
@@ -114,7 +112,8 @@ export default function Home() {
             />
           </div>
           <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
-            {outputText.length} chars · {outputText === "" ? 0 : outputText.split("\n").length} lines
+            {outputText.length} chars · {outputText === "" ? 0 : outputText.split("\n").length}{" "}
+            lines
           </Text>
         </Column>
       </Row>
@@ -125,7 +124,9 @@ export default function Home() {
         {/* ── Active Pipeline ── */}
         <Column flex={1} padding="m" radius="m">
           <Column fillWidth fillHeight>
-            <Heading variant="heading-strong-xs" marginBottom="s">Pipeline</Heading>
+            <Heading variant="heading-strong-xs" marginBottom="s">
+              Pipeline
+            </Heading>
 
             {pipeline.length === 0 ? (
               // Empty state — shown before any operation is added
@@ -134,7 +135,9 @@ export default function Home() {
                   Welcome to Glyph Weaver!
                 </Text>
                 <Text variant="body-default-s" onBackground="neutral-weak">
-                  A simple data transformation playground to build pipelines for text manipulation. Add, remove, and reorder operations to see how they affect your input in real time.
+                  A simple data transformation playground to build pipelines for text manipulation.
+                  Add, remove, and reorder operations to see how they affect your input in real
+                  time.
                 </Text>
                 <Text variant="body-default-s" onBackground="neutral-weak">
                   Add an operation from the right to get started!
@@ -212,7 +215,16 @@ export default function Home() {
                         <Column gap="2">
                           <Text variant="label-strong-s">{saved.name}</Text>
                           <Text variant="body-default-xs" onBackground="neutral-weak">
-                            {saved.pipeline.length} operation{saved.pipeline.length !== 1 ? "s" : ""}{" · "}
+                            {isSavedPipelineV2(saved)
+                              ? saved.graph.nodes.length
+                              : saved.pipeline.length}{" "}
+                            operation
+                            {(isSavedPipelineV2(saved)
+                              ? saved.graph.nodes.length
+                              : saved.pipeline.length) !== 1
+                              ? "s"
+                              : ""}
+                            {" · "}
                             {new Date(saved.savedAt).toLocaleDateString()}
                           </Text>
                         </Column>
@@ -242,43 +254,50 @@ export default function Home() {
           <Heading variant="heading-strong-xs">Operations</Heading>
 
           {/* Recent — only shown after at least one operation has been used */}
-          {recentOperationIds.length > 0 && (() => {
-            const isExpanded = expandedCategories.has("Recent");
-            return (
-              <Column gap="4">
-                <Row
-                  fillWidth
-                  vertical="center"
-                  horizontal="between"
-                  onClick={() => toggleCategory("Recent")}
-                  style={{ cursor: "pointer" }}
-                >
-                  <Text variant="label-default-xs" onBackground="neutral-weak">Recent</Text>
-                  <Icon name={isExpanded ? "chevronUp" : "chevronDown"} size="xs" onBackground="neutral-weak" />
-                </Row>
-                {isExpanded && (
-                  <Row wrap gap="xs">
-                    {recentOperationIds.map((id) => {
-                      const op = OPERATIONS.find((o) => o.id === id);
-                      if (!op) return null;
-                      return (
-                        <Button
-                          key={op.id}
-                          size="s"
-                          variant="secondary"
-                          suffixIcon="plus"
-                          onClick={() => addOperationAndTrack(op.id)}
-                          title={op.description}
-                        >
-                          {op.name}
-                        </Button>
-                      );
-                    })}
+          {recentOperationIds.length > 0 &&
+            (() => {
+              const isExpanded = expandedCategories.has("Recent");
+              return (
+                <Column gap="4">
+                  <Row
+                    fillWidth
+                    vertical="center"
+                    horizontal="between"
+                    onClick={() => toggleCategory("Recent")}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <Text variant="label-default-xs" onBackground="neutral-weak">
+                      Recent
+                    </Text>
+                    <Icon
+                      name={isExpanded ? "chevronUp" : "chevronDown"}
+                      size="xs"
+                      onBackground="neutral-weak"
+                    />
                   </Row>
-                )}
-              </Column>
-            );
-          })()}
+                  {isExpanded && (
+                    <Row wrap gap="xs">
+                      {recentOperationIds.map((id) => {
+                        const op = OPERATIONS.find((o) => o.id === id);
+                        if (!op) return null;
+                        return (
+                          <Button
+                            key={op.id}
+                            size="s"
+                            variant="secondary"
+                            suffixIcon="plus"
+                            onClick={() => addOperationAndTrack(op.id)}
+                            title={op.description}
+                          >
+                            {op.name}
+                          </Button>
+                        );
+                      })}
+                    </Row>
+                  )}
+                </Column>
+              );
+            })()}
 
           {OPERATION_CATEGORIES.map((category) => {
             const ops = OPERATIONS.filter((op) => op.category === category);
@@ -296,7 +315,11 @@ export default function Home() {
                     {category}
                   </Text>
                   <Text variant="label-default-xs" onBackground="neutral-weak">
-                    <Icon name={isExpanded ? "chevronUp" : "chevronDown"} size="xs" onBackground="neutral-weak" />
+                    <Icon
+                      name={isExpanded ? "chevronUp" : "chevronDown"}
+                      size="xs"
+                      onBackground="neutral-weak"
+                    />
                   </Text>
                 </Row>
                 {isExpanded && (
@@ -324,7 +347,9 @@ export default function Home() {
       {/* ── Save / Load (mobile) ── */}
       <Column fillWidth gap="s" hide s={{ hide: false }}>
         <Line />
-        <Heading variant="heading-strong-xs" marginTop="m">Save Pipeline</Heading>
+        <Heading variant="heading-strong-xs" marginTop="m">
+          Save Pipeline
+        </Heading>
         <Row fillWidth vertical="center">
           <Input
             style={{ flex: 1 }}
@@ -362,7 +387,14 @@ export default function Home() {
                 <Column gap="2">
                   <Text variant="label-strong-s">{saved.name}</Text>
                   <Text variant="body-default-xs" onBackground="neutral-weak">
-                    {saved.pipeline.length} operation{saved.pipeline.length !== 1 ? "s" : ""}{" · "}
+                    {isSavedPipelineV2(saved) ? saved.graph.nodes.length : saved.pipeline.length}{" "}
+                    operation
+                    {(isSavedPipelineV2(saved)
+                      ? saved.graph.nodes.length
+                      : saved.pipeline.length) !== 1
+                      ? "s"
+                      : ""}
+                    {" · "}
                     {new Date(saved.savedAt).toLocaleDateString()}
                   </Text>
                 </Column>
