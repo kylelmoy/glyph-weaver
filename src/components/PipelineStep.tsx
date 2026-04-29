@@ -64,13 +64,7 @@ export function PipelineStep({
               disabled={isLast}
               onClick={() => onMove("down")}
             />
-            <IconButton
-              icon="close"
-              size="s"
-              variant="ghost"
-              tooltip="Remove"
-              onClick={onRemove}
-            />
+            <IconButton icon="close" size="s" variant="ghost" tooltip="Remove" onClick={onRemove} />
           </Row>
         </Row>
 

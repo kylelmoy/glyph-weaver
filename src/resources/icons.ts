@@ -1,8 +1,6 @@
 import type { IconType } from "react-icons";
 
-import {
-  HiOutlineRocketLaunch,
-} from "react-icons/hi2";
+import { HiOutlineRocketLaunch } from "react-icons/hi2";
 import { FaGithub, FaLinkedin } from "react-icons/fa6";
 import { FaRegSave } from "react-icons/fa";
 

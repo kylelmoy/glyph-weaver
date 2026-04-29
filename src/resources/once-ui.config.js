@@ -60,7 +60,7 @@ const dataStyle = {
   tick: {
     fill: "var(--neutral-on-background-weak)",
     fontSize: 11,
-    line: false
+    line: false,
   },
 };
 
@@ -69,8 +69,7 @@ const meta = {
   home: {
     path: "/",
     title: "glyph-weaver by kyle moy",
-    description:
-      "A web-based tool for manipulating text.",
+    description: "A web-based tool for manipulating text.",
     image: "/images/og/home.jpg",
     canonical: "https://glyph.kylelmoy.com",
     robots: "index,follow",

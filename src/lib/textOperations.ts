@@ -157,7 +157,9 @@ export const OPERATIONS: OperationDefinition[] = [
     name: "Keep Lines Matching Regex",
     description: "Keep only lines that match a regular expression",
     category: "Filtering",
-    params: [{ key: "pattern", label: "Regex pattern", placeholder: "e.g. ^\\d+$", monospace: true }],
+    params: [
+      { key: "pattern", label: "Regex pattern", placeholder: "e.g. ^\\d+$", monospace: true },
+    ],
     apply: (lines, params) => {
       const pattern = params.pattern ?? "";
       if (!pattern) return lines;
@@ -174,7 +176,9 @@ export const OPERATIONS: OperationDefinition[] = [
     name: "Remove Lines Matching Regex",
     description: "Remove lines that match a regular expression",
     category: "Filtering",
-    params: [{ key: "pattern", label: "Regex pattern", placeholder: "e.g. ^\\s*#", monospace: true }],
+    params: [
+      { key: "pattern", label: "Regex pattern", placeholder: "e.g. ^\\s*#", monospace: true },
+    ],
     apply: (lines, params) => {
       const pattern = params.pattern ?? "";
       if (!pattern) return lines;
@@ -244,9 +248,7 @@ export const OPERATIONS: OperationDefinition[] = [
     description: "Capitalize the first letter of every word",
     category: "Case",
     apply: (lines) =>
-      lines.map((line) =>
-        line.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase()),
-      ),
+      lines.map((line) => line.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase())),
   },
   {
     id: "camel-case",
@@ -271,7 +273,10 @@ export const OPERATIONS: OperationDefinition[] = [
     category: "Case",
     apply: (lines) =>
       lines.map((line) =>
-        line.trim().toLowerCase().replace(/[\s\-]+/g, "_"),
+        line
+          .trim()
+          .toLowerCase()
+          .replace(/[\s\-]+/g, "_"),
       ),
   },
   {
@@ -281,7 +286,10 @@ export const OPERATIONS: OperationDefinition[] = [
     category: "Case",
     apply: (lines) =>
       lines.map((line) =>
-        line.trim().toLowerCase().replace(/[\s_]+/g, "-"),
+        line
+          .trim()
+          .toLowerCase()
+          .replace(/[\s_]+/g, "-"),
       ),
   },
   {
@@ -321,8 +329,18 @@ export const OPERATIONS: OperationDefinition[] = [
     description: "Replace regex matches in each line; use $1, $2 for capture groups",
     category: "Edit",
     params: [
-      { key: "pattern", label: "Regex pattern", placeholder: "e.g. (\\w+)@(\\w+)", monospace: true },
-      { key: "replace", label: "Replacement (use $1, $2…)", placeholder: "e.g. $2/$1", monospace: true },
+      {
+        key: "pattern",
+        label: "Regex pattern",
+        placeholder: "e.g. (\\w+)@(\\w+)",
+        monospace: true,
+      },
+      {
+        key: "replace",
+        label: "Replacement (use $1, $2…)",
+        placeholder: "e.g. $2/$1",
+        monospace: true,
+      },
       { key: "flags", label: "Flags", placeholder: "g" },
     ],
     apply: (lines, params) => {
@@ -458,7 +476,8 @@ export const OPERATIONS: OperationDefinition[] = [
   {
     id: "custom-js",
     name: "Custom Expression",
-    description: "Transform each line with a JS expression — variable `line` holds the current line",
+    description:
+      "Transform each line with a JS expression — variable `line` holds the current line",
     category: "Custom",
     params: [
       {
@@ -549,13 +568,23 @@ export const OPERATIONS: OperationDefinition[] = [
         for (let i = 0; i < line.length; i++) {
           const ch = line[i];
           if (inQuote) {
-            if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
-            else if (ch === '"') { inQuote = false; }
-            else { cur += ch; }
+            if (ch === '"' && line[i + 1] === '"') {
+              cur += '"';
+              i++;
+            } else if (ch === '"') {
+              inQuote = false;
+            } else {
+              cur += ch;
+            }
           } else {
-            if (ch === '"') { inQuote = true; }
-            else if (ch === ",") { cells.push(cur); cur = ""; }
-            else { cur += ch; }
+            if (ch === '"') {
+              inQuote = true;
+            } else if (ch === ",") {
+              cells.push(cur);
+              cur = "";
+            } else {
+              cur += ch;
+            }
           }
         }
         cells.push(cur);
@@ -593,11 +622,11 @@ export const OPERATIONS: OperationDefinition[] = [
       try {
         const parsed: unknown = JSON.parse(lines.join("\n"));
         if (Array.isArray(parsed)) {
-          return parsed.map((item) =>
-            typeof item === "string" ? item : JSON.stringify(item),
-          );
+          return parsed.map((item) => (typeof item === "string" ? item : JSON.stringify(item)));
         }
-      } catch { /* fall through */ }
+      } catch {
+        /* fall through */
+      }
       return lines;
     },
   },
