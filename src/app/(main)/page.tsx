@@ -300,76 +300,84 @@ export default function Home() {
 
         {/* ── Right: Input / Output ── */}
         <Column
-          gap="m"
-          padding="m"
           style={{
             width: 300,
             flexShrink: 0,
             borderLeft: "1px solid var(--neutral-alpha-medium)",
-            overflowY: "auto",
+            overflow: "hidden",
           }}
         >
-          <Column gap="xs">
-            <Text variant="label-default-xs" onBackground="neutral-weak">
-              Input
-            </Text>
-            <Textarea
-              id="input"
-              placeholder="Paste text here..."
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              lines={8}
-              resize="vertical"
-            />
-            <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
-              {inputText.length} chars · {inputText === "" ? 0 : inputText.split("\n").length} lines
-            </Text>
-          </Column>
+          {/* Scrollable input / output */}
+          <Column gap="m" padding="m" style={{ flex: 1, overflowY: "auto" }}>
+            <Column gap="xs">
+              <Text variant="label-default-xs" onBackground="neutral-weak">
+                Input
+              </Text>
+              <Textarea
+                id="input"
+                placeholder="Paste text here..."
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                lines={8}
+                resize="vertical"
+              />
+              <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
+                {inputText.length} chars · {inputText === "" ? 0 : inputText.split("\n").length}{" "}
+                lines
+              </Text>
+            </Column>
 
-          <Line />
+            <Line />
 
-          <Column gap="xs">
-            <Text variant="label-default-xs" onBackground="neutral-weak">
-              {outputs.length > 1 ? `Outputs (${outputs.length})` : "Output"}
-            </Text>
-            {outputs.length === 1 ? (
-              <>
-                <Textarea
-                  id="output"
-                  placeholder="Transformed text appears here"
-                  value={outputs[0].text}
-                  readOnly
-                  lines={8}
-                  resize="vertical"
-                />
-                <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
-                  {outputs[0].text.length} chars ·{" "}
-                  {outputs[0].text === "" ? 0 : outputs[0].text.split("\n").length} lines
-                </Text>
-              </>
-            ) : (
-              outputs.map((out: GraphOutput, i: number) => (
-                <Column key={out.id} gap="xs">
-                  <Text variant="label-default-xs" onBackground="neutral-weak">
-                    Output {i + 1}
-                  </Text>
+            <Column gap="xs">
+              <Text variant="label-default-xs" onBackground="neutral-weak">
+                {outputs.length > 1 ? `Outputs (${outputs.length})` : "Output"}
+              </Text>
+              {outputs.length === 1 ? (
+                <>
                   <Textarea
-                    id={`output-${out.id}`}
-                    value={out.text}
+                    id="output"
+                    placeholder="Transformed text appears here"
+                    value={outputs[0].text}
                     readOnly
+                    lines={8}
                     resize="vertical"
-                    lines={4}
                   />
                   <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
-                    {out.text.length} chars ·{" "}
-                    {out.text === "" ? 0 : out.text.split("\n").length} lines
+                    {outputs[0].text.length} chars ·{" "}
+                    {outputs[0].text === "" ? 0 : outputs[0].text.split("\n").length} lines
                   </Text>
-                </Column>
-              ))
-            )}
+                </>
+              ) : (
+                outputs.map((out: GraphOutput, i: number) => (
+                  <Column key={out.id} gap="xs">
+                    <Text variant="label-default-xs" onBackground="neutral-weak">
+                      Output {i + 1}
+                    </Text>
+                    <Textarea
+                      id={`output-${out.id}`}
+                      value={out.text}
+                      readOnly
+                      resize="vertical"
+                      lines={4}
+                    />
+                    <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
+                      {out.text.length} chars ·{" "}
+                      {out.text === "" ? 0 : out.text.split("\n").length} lines
+                    </Text>
+                  </Column>
+                ))
+              )}
+            </Column>
           </Column>
 
-          <Row horizontal="center" gap="8" marginTop="m">
+          {/* Pinned footer */}
+          <Row
+            horizontal="center"
+            gap="8"
+            paddingY="s"
+            style={{ borderTop: "1px solid var(--neutral-alpha-medium)", flexShrink: 0 }}
+          >
             <IconButton
               href="https://github.com/kylelmoy/glyph-weaver"
               icon="github"
