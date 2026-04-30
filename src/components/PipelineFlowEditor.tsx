@@ -198,7 +198,7 @@ export function PipelineFlowEditor({
   );
 
   return (
-    <div style={{ width: "100%", height: 500, borderRadius: 8, overflow: "hidden" }}>
+    <div style={{ width: "100%", height: "100%", overflow: "hidden" }}>
       <ReactFlow
         nodes={rfNodes}
         edges={rfEdges}

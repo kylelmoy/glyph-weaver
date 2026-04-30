@@ -21,7 +21,6 @@ import {
 } from "@once-ui-system/core";
 import { useCallback, useMemo, useState } from "react";
 
-
 export default function Home() {
   const [inputText, setInputText] = useState("");
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
@@ -76,123 +75,143 @@ export default function Home() {
   const outputs = useMemo(() => processGraph(inputText, graph), [inputText, graph]);
 
   return (
-    <Column
-      fillWidth
-      padding="l"
-      gap="m"
-      style={{ maxWidth: 960, margin: "0 auto", minHeight: "100vh" }}
-    >
-      <Row fillWidth vertical="center" horizontal="between">
+    <Column fillWidth style={{ height: "100dvh", overflow: "hidden" }}>
+      {/* ── Header ── */}
+      <Row
+        fillWidth
+        paddingX="m"
+        paddingY="s"
+        vertical="center"
+        horizontal="between"
+        style={{ borderBottom: "1px solid var(--neutral-alpha-medium)", flexShrink: 0 }}
+      >
         <Row vertical="center" gap="s">
-          <Logo size={32} />
-          <Heading>Glyph Weaver</Heading>
+          <Logo size={28} />
+          <Heading variant="heading-strong-s">Glyph Weaver</Heading>
         </Row>
         <ThemeToggle />
       </Row>
 
-      {/* ── Input | Output ── */}
-      <Row fillWidth gap="m" vertical="stretch">
-        <Column flex={1} gap="xs">
-          <Heading variant="heading-strong-xs">Input</Heading>
-          <Textarea
-            id="input"
-            placeholder="Put text here..."
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            lines={8}
-            resize="vertical"
-          />
-          <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
-            {inputText.length} chars · {inputText === "" ? 0 : inputText.split("\n").length} lines
-          </Text>
-        </Column>
-        <Column flex={1} gap="xs" fillHeight>
-          <Heading variant="heading-strong-xs">
-            {outputs.length > 1 ? `Outputs (${outputs.length})` : "Output"}
-          </Heading>
-          {outputs.length === 1 ? (
-            <>
-              <div className="fill-height-textarea">
-                <Textarea
-                  id="output"
-                  placeholder="...and your transformed text appears here!"
-                  value={outputs[0].text}
-                  readOnly
-                  resize="none"
-                />
-              </div>
-              <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
-                {outputs[0].text.length} chars ·{" "}
-                {outputs[0].text === "" ? 0 : outputs[0].text.split("\n").length} lines
-              </Text>
-            </>
-          ) : (
-            outputs.map((out: GraphOutput, i: number) => (
-              <Column key={out.id} gap="xs">
-                <Text variant="label-default-xs" onBackground="neutral-weak">
-                  Output {i + 1}
-                </Text>
-                <Textarea
-                  id={`output-${out.id}`}
-                  value={out.text}
-                  readOnly
-                  resize="vertical"
-                  lines={4}
-                />
-                <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
-                  {out.text.length} chars · {out.text === "" ? 0 : out.text.split("\n").length}{" "}
-                  lines
-                </Text>
-              </Column>
-            ))
-          )}
-        </Column>
-      </Row>
+      {/* ── 3-column body ── */}
+      <Row fillWidth style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
 
-      <Line />
+        {/* ── Left: Operations palette ── */}
+        <Column
+          style={{
+            width: 300,
+            flexShrink: 0,
+            borderRight: "1px solid var(--neutral-alpha-medium)",
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+          }}
+        >
+          {/* Scrollable operation list */}
+          <Column gap="s" padding="m" style={{ flex: 1, overflowY: "auto" }}>
+            <Text variant="label-default-xs" onBackground="neutral-weak">
+              Operations
+            </Text>
 
-      <Row fillWidth gap="m" vertical="stretch">
-        {/* ── Active Pipeline ── */}
-        <Column flex={1} padding="m" radius="m">
-          <Column fillWidth fillHeight>
-            <Heading variant="heading-strong-xs" marginBottom="s">
-              Pipeline
-            </Heading>
+            {recentOperationIds.length > 0 &&
+              (() => {
+                const isExpanded = expandedCategories.has("Recent");
+                return (
+                  <Column gap="4">
+                    <Row
+                      fillWidth
+                      vertical="center"
+                      horizontal="between"
+                      onClick={() => toggleCategory("Recent")}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <Text variant="label-default-xs" onBackground="neutral-weak">
+                        Recent
+                      </Text>
+                      <Icon
+                        name={isExpanded ? "chevronUp" : "chevronDown"}
+                        size="xs"
+                        onBackground="neutral-weak"
+                      />
+                    </Row>
+                    {isExpanded && (
+                      <Column gap="4">
+                        {recentOperationIds.map((id) => {
+                          const op = OPERATIONS.find((o) => o.id === id);
+                          if (!op) return null;
+                          return (
+                            <Button
+                              key={op.id}
+                              fillWidth
+                              size="s"
+                              variant="secondary"
+                              suffixIcon="plus"
+                              onClick={() => addOperationAndTrack(op.id)}
+                              title={op.description}
+                            >
+                              {op.name}
+                            </Button>
+                          );
+                        })}
+                      </Column>
+                    )}
+                  </Column>
+                );
+              })()}
 
-            {graph.nodes.length === 0 ? (
-              <Column gap="s">
-                <Text variant="body-strong-s" onBackground="neutral-weak">
-                  Welcome to Glyph Weaver!
-                </Text>
-                <Text variant="body-default-s" onBackground="neutral-weak">
-                  A simple data transformation playground to build pipelines for text manipulation.
-                  Add, remove, and reorder operations to see how they affect your input in real
-                  time.
-                </Text>
-                <Text variant="body-default-s" onBackground="neutral-weak">
-                  Add an operation from the right to get started!
-                </Text>
-              </Column>
-            ) : (
-              <PipelineFlowEditor
-                graph={graph}
-                onGraphChange={setGraph}
-                onUpdateParam={handleUpdateParam}
-                onRemoveNode={handleRemoveNode}
-                selectedNodeId={selectedNodeId}
-                onSelectNode={setSelectedNodeId}
-              />
-            )}
+            {OPERATION_CATEGORIES.map((category) => {
+              const ops = OPERATIONS.filter((op) => op.category === category);
+              const isExpanded = expandedCategories.has(category);
+              return (
+                <Column key={category} gap="4">
+                  <Row
+                    fillWidth
+                    vertical="center"
+                    horizontal="between"
+                    onClick={() => toggleCategory(category)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <Text variant="label-default-xs" onBackground="neutral-weak">
+                      {category}
+                    </Text>
+                    <Icon
+                      name={isExpanded ? "chevronUp" : "chevronDown"}
+                      size="xs"
+                      onBackground="neutral-weak"
+                    />
+                  </Row>
+                  {isExpanded && (
+                    <Column gap="4">
+                      {ops.map((op) => (
+                        <Button
+                          key={op.id}
+                          fillWidth
+                          size="s"
+                          variant="secondary"
+                          suffixIcon="plus"
+                          onClick={() => addOperationAndTrack(op.id)}
+                          title={op.description}
+                        >
+                          {op.name}
+                        </Button>
+                      ))}
+                    </Column>
+                  )}
+                </Column>
+              );
+            })}
           </Column>
 
-          {/* ── Save / Load ── */}
-          <Column fillWidth gap="xs" marginTop="m" s={{ hide: true }}>
-            <Line />
+          {/* Save / Load — always visible at bottom of sidebar */}
+          <Column
+            gap="xs"
+            padding="m"
+            style={{ borderTop: "1px solid var(--neutral-alpha-medium)", flexShrink: 0 }}
+          >
             <Row fillWidth vertical="center">
               <Input
                 style={{ flex: 1 }}
                 id="pipeline-name"
-                placeholder="Name this pipeline..."
+                placeholder="Name..."
                 value={pipelineName}
                 onChange={(e) => setPipelineName(e.target.value)}
                 height="s"
@@ -222,7 +241,7 @@ export default function Home() {
                 </Button>
 
                 {showSaved && (
-                  <Column gap="xs">
+                  <Column gap="xs" style={{ maxHeight: 240, overflowY: "auto" }}>
                     {savedPipelines.map((saved) => (
                       <Row
                         key={saved.id}
@@ -233,16 +252,20 @@ export default function Home() {
                         border="neutral-alpha-medium"
                         radius="s"
                       >
-                        <Column gap="2">
-                          <Text variant="label-strong-s">{saved.name}</Text>
+                        <Column gap="2" style={{ minWidth: 0 }}>
+                          <Text
+                            variant="label-strong-s"
+                            style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                          >
+                            {saved.name}
+                          </Text>
                           <Text variant="body-default-xs" onBackground="neutral-weak">
-                            {saved.graph.nodes.length} op
-                            {saved.graph.nodes.length !== 1 ? "s" : ""}
+                            {saved.graph.nodes.length} op{saved.graph.nodes.length !== 1 ? "s" : ""}
                             {" · "}
                             {new Date(saved.savedAt).toLocaleDateString()}
                           </Text>
                         </Column>
-                        <Row gap="xs">
+                        <Row gap="xs" style={{ flexShrink: 0 }}>
                           <Button size="s" variant="secondary" onClick={() => loadPipeline(saved)}>
                             Load
                           </Button>
@@ -263,183 +286,114 @@ export default function Home() {
           </Column>
         </Column>
 
-        {/* ── Operations Palette ── */}
-        <Column flex={1} gap="s" padding="m" radius="m">
-          <Heading variant="heading-strong-xs">Operations</Heading>
-
-          {/* Recent — only shown after at least one operation has been used */}
-          {recentOperationIds.length > 0 &&
-            (() => {
-              const isExpanded = expandedCategories.has("Recent");
-              return (
-                <Column gap="4">
-                  <Row
-                    fillWidth
-                    vertical="center"
-                    horizontal="between"
-                    onClick={() => toggleCategory("Recent")}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <Text variant="label-default-xs" onBackground="neutral-weak">
-                      Recent
-                    </Text>
-                    <Icon
-                      name={isExpanded ? "chevronUp" : "chevronDown"}
-                      size="xs"
-                      onBackground="neutral-weak"
-                    />
-                  </Row>
-                  {isExpanded && (
-                    <Row wrap gap="xs">
-                      {recentOperationIds.map((id) => {
-                        const op = OPERATIONS.find((o) => o.id === id);
-                        if (!op) return null;
-                        return (
-                          <Button
-                            key={op.id}
-                            size="s"
-                            variant="secondary"
-                            suffixIcon="plus"
-                            onClick={() => addOperationAndTrack(op.id)}
-                            title={op.description}
-                          >
-                            {op.name}
-                          </Button>
-                        );
-                      })}
-                    </Row>
-                  )}
-                </Column>
-              );
-            })()}
-
-          {OPERATION_CATEGORIES.map((category) => {
-            const ops = OPERATIONS.filter((op) => op.category === category);
-            const isExpanded = expandedCategories.has(category);
-            return (
-              <Column key={category} gap="4">
-                <Row
-                  fillWidth
-                  vertical="center"
-                  horizontal="between"
-                  onClick={() => toggleCategory(category)}
-                  style={{ cursor: "pointer" }}
-                >
-                  <Text variant="label-default-xs" onBackground="neutral-weak">
-                    {category}
-                  </Text>
-                  <Text variant="label-default-xs" onBackground="neutral-weak">
-                    <Icon
-                      name={isExpanded ? "chevronUp" : "chevronDown"}
-                      size="xs"
-                      onBackground="neutral-weak"
-                    />
-                  </Text>
-                </Row>
-                {isExpanded && (
-                  <Row wrap gap="xs">
-                    {ops.map((op) => (
-                      <Button
-                        key={op.id}
-                        size="s"
-                        variant="secondary"
-                        suffixIcon="plus"
-                        onClick={() => addOperationAndTrack(op.id)}
-                        title={op.description}
-                      >
-                        {op.name}
-                      </Button>
-                    ))}
-                  </Row>
-                )}
-              </Column>
-            );
-          })}
-        </Column>
-      </Row>
-
-      {/* ── Save / Load (mobile) ── */}
-      <Column fillWidth gap="s" hide s={{ hide: false }}>
-        <Line />
-        <Heading variant="heading-strong-xs" marginTop="m">
-          Save Pipeline
-        </Heading>
-        <Row fillWidth vertical="center">
-          <Input
-            style={{ flex: 1 }}
-            id="pipeline-name-mobile"
-            placeholder="Name this pipeline..."
-            value={pipelineName}
-            onChange={(e) => setPipelineName(e.target.value)}
-            height="s"
-            radius="left"
-          />
-          <Button
-            size="l"
-            prefixIcon="save"
-            variant="secondary"
-            disabled={graph.nodes.length === 0}
-            onClick={savePipeline}
-            radius="right"
-          >
-            Save
-          </Button>
-        </Row>
-
-        {savedPipelines.length > 0 && (
-          <Column fillWidth gap="xs">
-            {savedPipelines.map((saved) => (
-              <Row
-                key={saved.id}
-                gap="s"
-                vertical="center"
-                horizontal="between"
-                padding="s"
-                border="neutral-alpha-medium"
-                radius="s"
+        {/* ── Center: Flow canvas ── */}
+        <Column style={{ flex: 1, overflow: "hidden", minWidth: 0 }}>
+          {graph.nodes.length === 0 ? (
+            <Column
+              fillWidth
+              fillHeight
+              horizontal="center"
+              vertical="center"
+              gap="s"
+              padding="xl"
+            >
+              <Text variant="heading-strong-xs" onBackground="neutral-weak">
+                Welcome to Glyph Weaver
+              </Text>
+              <Text
+                variant="body-default-s"
+                onBackground="neutral-weak"
+                align="center"
+                style={{ maxWidth: 360 }}
               >
-                <Column gap="2">
-                  <Text variant="label-strong-s">{saved.name}</Text>
-                  <Text variant="body-default-xs" onBackground="neutral-weak">
-                    {saved.graph.nodes.length} op{saved.graph.nodes.length !== 1 ? "s" : ""}
-                    {" · "}
-                    {new Date(saved.savedAt).toLocaleDateString()}
+                Build text transformation pipelines visually. Select a node before adding an
+                operation to branch the graph.
+              </Text>
+            </Column>
+          ) : (
+            <PipelineFlowEditor
+              graph={graph}
+              onGraphChange={setGraph}
+              onUpdateParam={handleUpdateParam}
+              onRemoveNode={handleRemoveNode}
+              selectedNodeId={selectedNodeId}
+              onSelectNode={setSelectedNodeId}
+            />
+          )}
+        </Column>
+
+        {/* ── Right: Input / Output ── */}
+        <Column
+          gap="m"
+          padding="m"
+          style={{
+            width: 300,
+            flexShrink: 0,
+            borderLeft: "1px solid var(--neutral-alpha-medium)",
+            overflowY: "auto",
+          }}
+        >
+          <Column gap="xs">
+            <Text variant="label-default-xs" onBackground="neutral-weak">
+              Input
+            </Text>
+            <Textarea
+              id="input"
+              placeholder="Paste text here..."
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              lines={8}
+              resize="vertical"
+            />
+            <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
+              {inputText.length} chars · {inputText === "" ? 0 : inputText.split("\n").length} lines
+            </Text>
+          </Column>
+
+          <Line />
+
+          <Column gap="xs">
+            <Text variant="label-default-xs" onBackground="neutral-weak">
+              {outputs.length > 1 ? `Outputs (${outputs.length})` : "Output"}
+            </Text>
+            {outputs.length === 1 ? (
+              <>
+                <Textarea
+                  id="output"
+                  placeholder="Transformed text appears here"
+                  value={outputs[0].text}
+                  readOnly
+                  lines={8}
+                  resize="vertical"
+                />
+                <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
+                  {outputs[0].text.length} chars ·{" "}
+                  {outputs[0].text === "" ? 0 : outputs[0].text.split("\n").length} lines
+                </Text>
+              </>
+            ) : (
+              outputs.map((out: GraphOutput, i: number) => (
+                <Column key={out.id} gap="xs">
+                  <Text variant="label-default-xs" onBackground="neutral-weak">
+                    Output {i + 1}
+                  </Text>
+                  <Textarea
+                    id={`output-${out.id}`}
+                    value={out.text}
+                    readOnly
+                    resize="vertical"
+                    lines={4}
+                  />
+                  <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
+                    {out.text.length} chars ·{" "}
+                    {out.text === "" ? 0 : out.text.split("\n").length} lines
                   </Text>
                 </Column>
-                <Row gap="xs">
-                  <Button size="s" variant="secondary" onClick={() => loadPipeline(saved)}>
-                    Load
-                  </Button>
-                  <IconButton
-                    icon="close"
-                    size="s"
-                    variant="ghost"
-                    tooltip="Delete"
-                    onClick={() => deleteSavedPipeline(saved.id)}
-                  />
-                </Row>
-              </Row>
-            ))}
+              ))
+            )}
           </Column>
-        )}
-      </Column>
 
-      {/* ── Footer ── */}
-      <Row as="footer" fillWidth padding="8" horizontal="center" s={{ direction: "column" }}>
-        <Row
-          maxWidth="m"
-          paddingY="8"
-          paddingX="16"
-          gap="16"
-          horizontal="between"
-          vertical="center"
-          s={{ direction: "column", horizontal: "center", align: "center" }}
-        >
-          <Text variant="body-default-s" onBackground="neutral-strong">
-            <Text onBackground="neutral-weak">© 2026 /</Text>
-            <Text paddingX="4">Kyle Moy</Text>
-          </Text>
-          <Row gap="16">
+          <Row horizontal="center" gap="8" marginTop="m">
             <IconButton
               href="https://github.com/kylelmoy/glyph-weaver"
               icon="github"
@@ -462,8 +416,7 @@ export default function Home() {
               variant="ghost"
             />
           </Row>
-        </Row>
-        <Row height="80" hide s={{ hide: false }} />
+        </Column>
       </Row>
     </Column>
   );
