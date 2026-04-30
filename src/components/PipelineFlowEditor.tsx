@@ -22,7 +22,8 @@ import { PipelineOpNode } from "@/components/PipelineOpNode";
 import type { OpNodeData } from "@/components/PipelineOpNode";
 import type { PipelineGraph } from "@/lib/pipelineGraph";
 import { OPERATIONS } from "@/lib/textOperations";
-import { useCallback, useEffect, useRef, type MouseEvent } from "react";
+import { useTheme } from "@once-ui-system/core";
+import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 
 // Define node types outside the component so React Flow doesn't remount nodes on re-render.
 const NODE_TYPES = { op: PipelineOpNode };
@@ -102,6 +103,14 @@ export function PipelineFlowEditor({
   selectedNodeId,
   onSelectNode,
 }: PipelineFlowEditorProps) {
+  const { theme } = useTheme();
+  const [colorMode, setColorMode] = useState<"light" | "dark">("light");
+  useEffect(() => {
+    setColorMode(
+      (document.documentElement.getAttribute("data-theme") as "light" | "dark") ?? "light",
+    );
+  }, [theme]);
+
   const { nodes: initialNodes, edges: initialEdges } = graphToFlow(
     graph,
     onUpdateParam,
@@ -212,6 +221,7 @@ export function PipelineFlowEditor({
         multiSelectionKeyCode={null}
         fitView
         deleteKeyCode="Delete"
+        colorMode={colorMode}
       >
         <Background />
         <Controls />
