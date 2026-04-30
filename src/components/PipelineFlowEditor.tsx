@@ -30,6 +30,24 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react
 // Define node types outside the component so React Flow doesn't remount nodes on re-render.
 const NODE_TYPES = { op: PipelineOpNode, "pipeline-input": PipelineInputNode };
 
+/** Walk backwards from a leaf to collect every ancestor node ID and edge ID. */
+function getAncestorPath(
+  leafId: string,
+  edges: Edge[],
+): { nodeIds: Set<string>; edgeIds: Set<string> } {
+  const nodeIds = new Set<string>();
+  const edgeIds = new Set<string>();
+  let current: string | undefined = leafId;
+  while (current) {
+    nodeIds.add(current);
+    const parentEdge = edges.find((e) => e.target === current);
+    if (!parentEdge) break;
+    edgeIds.add(parentEdge.id);
+    current = parentEdge.source;
+  }
+  return { nodeIds, edgeIds };
+}
+
 export type OpNode = Node<OpNodeData, "op">;
 
 // ── Conversion helpers ────────────────────────────────────────────────────────
@@ -101,6 +119,8 @@ interface PipelineFlowEditorProps {
   onRemoveNode: (nodeId: string) => void;
   selectedNodeId: string | null;
   onSelectNode: (id: string | null) => void;
+  onHoverLeafNode: (id: string | null) => void;
+  hoveredOutputId: string | null;
 }
 
 export function PipelineFlowEditor({
@@ -110,6 +130,8 @@ export function PipelineFlowEditor({
   onRemoveNode,
   selectedNodeId,
   onSelectNode,
+  onHoverLeafNode,
+  hoveredOutputId,
 }: PipelineFlowEditorProps) {
   const { theme } = useTheme();
   const [colorMode, setColorMode] = useState<"light" | "dark">("light");
@@ -140,6 +162,29 @@ export function PipelineFlowEditor({
     setRFNodes(nodes);
     setRFEdges(edges);
   }, [graph, onUpdateParam, onRemoveNode, selectedNodeId, setRFNodes, setRFEdges]);
+
+  // Local leaf hover (from canvas); combined with hoveredOutputId (from right panel).
+  const [hoveredLocalLeafId, setHoveredLocalLeafId] = useState<string | null>(null);
+  const activeLeafId = hoveredLocalLeafId ?? hoveredOutputId;
+
+  // Highlight the full ancestor path (nodes + edges) for the active leaf.
+  useEffect(() => {
+    if (!activeLeafId) {
+      setRFNodes((prev) => prev.map((n) => ({ ...n, data: { ...n.data, highlighted: false } })));
+      setRFEdges((prev) => prev.map((e) => ({ ...e, animated: false, style: undefined })));
+      return;
+    }
+    const { nodeIds, edgeIds } = getAncestorPath(activeLeafId, graph.edges);
+    setRFNodes((prev) =>
+      prev.map((n) => ({ ...n, data: { ...n.data, highlighted: nodeIds.has(n.id) } })),
+    );
+    setRFEdges((prev) =>
+      prev.map((e) => ({
+        ...e,
+        animated: edgeIds.has(e.id)
+      })),
+    );
+  }, [activeLeafId, graph.edges, setRFNodes, setRFEdges]);
 
   const handleNodesChange: OnNodesChange<Node> = useCallback(
     (changes) => {
@@ -177,6 +222,22 @@ export function PipelineFlowEditor({
   );
 
   const handlePaneClick = useCallback(() => onSelectNode(null), [onSelectNode]);
+
+  const handleNodeMouseEnter = useCallback(
+    (_e: MouseEvent, node: Node) => {
+      const isLeaf = node.id !== INPUT_NODE_ID && !rfEdges.some((e) => e.source === node.id);
+      if (isLeaf) {
+        setHoveredLocalLeafId(node.id);
+        onHoverLeafNode(node.id);
+      }
+    },
+    [rfEdges, onHoverLeafNode],
+  );
+
+  const handleNodeMouseLeave = useCallback(() => {
+    setHoveredLocalLeafId(null);
+    onHoverLeafNode(null);
+  }, [onHoverLeafNode]);
 
   const handleEdgesChange: OnEdgesChange = useCallback(
     (changes) => {
@@ -225,6 +286,8 @@ export function PipelineFlowEditor({
         isValidConnection={isValidConnection}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
+        onNodeMouseEnter={handleNodeMouseEnter}
+        onNodeMouseLeave={handleNodeMouseLeave}
         nodeTypes={NODE_TYPES}
         multiSelectionKeyCode={null}
         fitView

@@ -4,22 +4,21 @@ import { Column, Text } from "@once-ui-system/core";
 import { Handle, Position } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
 
-export function PipelineInputNode({ selected }: NodeProps) {
+export function PipelineInputNode({ data, selected }: NodeProps) {
+  const highlighted = (data as { highlighted?: boolean }).highlighted;
   return (
     <div
       style={{
-        background: "var(--brand-alpha-weak)",
-        border: `2px solid ${selected ? "var(--accent-solid-strong)" : "var(--brand-solid-strong)"}`,
+        background: highlighted ? "var(--accent-alpha-weak)" : undefined,
+        border: `2px solid ${selected ? "var(--accent-solid-strong)" : "var(--neutral-alpha-medium)"}`,
         borderRadius: "var(--radius-m)",
         minWidth: 160,
         padding: "8px 12px",
+        transition: "background 0.15s",
       }}
     >
       <Column gap="2">
-        <Text variant="label-strong-s">Input text</Text>
-        <Text variant="body-default-xs" onBackground="neutral-weak">
-          Source for the pipeline
-        </Text>
+        <Text variant="label-strong-s">→ Input</Text>
       </Column>
       <Handle type="source" position={Position.Bottom} />
     </div>

@@ -10,6 +10,7 @@ export interface OpNodeData extends Record<string, unknown> {
   params: Record<string, string>;
   onUpdateParam: (key: string, value: string) => void;
   onRemove: () => void;
+  highlighted?: boolean;
 }
 
 export function PipelineOpNode({ id, data, selected }: NodeProps) {
@@ -20,8 +21,9 @@ export function PipelineOpNode({ id, data, selected }: NodeProps) {
   return (
     <div
       style={{
-        background: "var(--background-page)",
-        border: `2px solid ${selected ? "var(--accent-solid-strong)" : "var(--neutral-alpha-medium)"}`,
+        background: nodeData.highlighted ? "var(--accent-alpha-weak)" : "var(--background-page)",
+        border: `2px solid ${selected ? "var(--brand-solid-strong)" : "var(--neutral-alpha-medium)"}`,
+        transition: "background 0.15s",
         borderRadius: "var(--radius-m)",
         minWidth: 200,
         maxWidth: 280,

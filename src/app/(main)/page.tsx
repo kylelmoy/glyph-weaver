@@ -74,6 +74,9 @@ export default function Home() {
 
   const outputs = useMemo(() => processGraph(inputText, graph), [inputText, graph]);
 
+  const [hoveredLeafId, setHoveredLeafId] = useState<string | null>(null);
+  const [hoveredOutputId, setHoveredOutputId] = useState<string | null>(null);
+
   return (
     <Column fillWidth style={{ height: "100dvh", overflow: "hidden" }}>
       {/* ── Header ── */}
@@ -87,7 +90,7 @@ export default function Home() {
       >
         <Row vertical="center" gap="s">
           <Logo size={28} />
-          <Heading variant="heading-strong-s">Glyph Weaver</Heading>
+          <Heading as="h1">Glyph Weaver</Heading>
         </Row>
         <ThemeToggle />
       </Row>
@@ -108,9 +111,9 @@ export default function Home() {
         >
           {/* Scrollable operation list */}
           <Column gap="s" padding="m" style={{ flex: 1, overflowY: "auto" }}>
-            <Text variant="label-default-xs" onBackground="neutral-weak">
+            <Heading as="h4">
               Operations
-            </Text>
+            </Heading>
 
             {recentOperationIds.length > 0 &&
               (() => {
@@ -124,9 +127,9 @@ export default function Home() {
                       onClick={() => toggleCategory("Recent")}
                       style={{ cursor: "pointer" }}
                     >
-                      <Text variant="label-default-xs" onBackground="neutral-weak">
+                      <Heading as="h5">
                         Recent
-                      </Text>
+                      </Heading>
                       <Icon
                         name={isExpanded ? "chevronUp" : "chevronDown"}
                         size="xs"
@@ -170,9 +173,9 @@ export default function Home() {
                     onClick={() => toggleCategory(category)}
                     style={{ cursor: "pointer" }}
                   >
-                    <Text variant="label-default-xs" onBackground="neutral-weak">
+                    <Heading as="h5">
                       {category}
-                    </Text>
+                    </Heading>
                     <Icon
                       name={isExpanded ? "chevronUp" : "chevronDown"}
                       size="xs"
@@ -295,6 +298,8 @@ export default function Home() {
             onRemoveNode={handleRemoveNode}
             selectedNodeId={selectedNodeId}
             onSelectNode={setSelectedNodeId}
+            onHoverLeafNode={setHoveredLeafId}
+            hoveredOutputId={hoveredOutputId}
           />
         </Column>
 
@@ -310,9 +315,9 @@ export default function Home() {
           {/* Scrollable input / output */}
           <Column gap="m" padding="m" style={{ flex: 1, overflowY: "auto" }}>
             <Column gap="xs">
-              <Text variant="label-default-xs" onBackground="neutral-weak">
+              <Heading as="h3">
                 Input
-              </Text>
+              </Heading>
               <Textarea
                 id="input"
                 placeholder="Paste text here..."
@@ -330,9 +335,9 @@ export default function Home() {
             <Line />
 
             <Column gap="xs">
-              <Text variant="label-default-xs" onBackground="neutral-weak">
-                {outputs.length > 1 ? `Outputs (${outputs.length})` : "Output"}
-              </Text>
+              <Heading as="h3">
+                Output
+              </Heading>
               {outputs.length === 1 ? (
                 <>
                   <Textarea
@@ -342,6 +347,12 @@ export default function Home() {
                     readOnly
                     lines={8}
                     resize="vertical"
+                    style={{
+                      background: hoveredLeafId === outputs[0].id ? "var(--accent-alpha-weak)" : undefined,
+                      transition: "background 0.15s",
+                    }}
+                    onMouseEnter={() => setHoveredOutputId(outputs[0].id)}
+                    onMouseLeave={() => setHoveredOutputId(null)}
                   />
                   <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
                     {outputs[0].text.length} chars ·{" "}
@@ -360,6 +371,12 @@ export default function Home() {
                       readOnly
                       resize="vertical"
                       lines={4}
+                      style={{
+                        background: hoveredLeafId === out.id ? "var(--accent-alpha-weak)" : undefined,
+                        transition: "background 0.15s",
+                      }}
+                      onMouseEnter={() => setHoveredOutputId(out.id)}
+                      onMouseLeave={() => setHoveredOutputId(null)}
                     />
                     <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
                       {out.text.length} chars ·{" "}
