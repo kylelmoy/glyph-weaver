@@ -1,5 +1,8 @@
 import { OPERATIONS } from "./textOperations";
 
+/** Reserved ID for the always-present input node. */
+export const INPUT_NODE_ID = "__input__";
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 /** One node in the pipeline DAG. Doubles as a React Flow node. */
@@ -51,7 +54,8 @@ export interface GraphOutput {
 }
 
 export function processGraph(input: string, graph: PipelineGraph): GraphOutput[] {
-  if (graph.nodes.length === 0) return [{ id: "__empty__", text: "" }];
+  const opNodes = graph.nodes.filter((n) => n.id !== INPUT_NODE_ID);
+  if (opNodes.length === 0) return [{ id: "__empty__", text: "" }];
 
   // Build adjacency structures in one pass over edges.
   const childrenOf = new Map<string, string[]>();
@@ -86,16 +90,18 @@ export function processGraph(input: string, graph: PipelineGraph): GraphOutput[]
   }
 
   if (topoOrder.length !== graph.nodes.length) {
-    // Cycle detected — graph is not a valid DAG.
     console.warn("processGraph: cycle detected, returning empty output");
     return [{ id: "__cycle__", text: "" }];
   }
 
-  // Process nodes in topological order.
+  // The input node passes through the raw input text; seed the cache before processing.
   const outputCache = new Map<string, string>();
+  outputCache.set(INPUT_NODE_ID, input);
+
   const nodeById = new Map(graph.nodes.map((n) => [n.id, n]));
 
   for (const id of topoOrder) {
+    if (id === INPUT_NODE_ID) continue; // already seeded above
     const node = nodeById.get(id);
     if (!node) continue;
     const parentId = parentOf.get(id);
@@ -106,8 +112,10 @@ export function processGraph(input: string, graph: PipelineGraph): GraphOutput[]
     outputCache.set(id, resultLines.join("\n"));
   }
 
-  // Collect leaf nodes (nodes with no children) in topo order.
-  const leaves = topoOrder.filter((id) => (childrenOf.get(id)?.length ?? 0) === 0);
+  // Collect leaf operation nodes (exclude the input node itself).
+  const leaves = topoOrder.filter(
+    (id) => id !== INPUT_NODE_ID && (childrenOf.get(id)?.length ?? 0) === 0,
+  );
   return leaves.length > 0
     ? leaves.map((id) => ({ id, text: outputCache.get(id) ?? "" }))
     : [{ id: "__empty__", text: "" }];

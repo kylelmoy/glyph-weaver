@@ -18,15 +18,17 @@ import type {
   OnNodesChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { PipelineInputNode } from "@/components/PipelineInputNode";
 import { PipelineOpNode } from "@/components/PipelineOpNode";
 import type { OpNodeData } from "@/components/PipelineOpNode";
 import type { PipelineGraph } from "@/lib/pipelineGraph";
+import { INPUT_NODE_ID } from "@/lib/pipelineGraph";
 import { OPERATIONS } from "@/lib/textOperations";
 import { useTheme } from "@once-ui-system/core";
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 
 // Define node types outside the component so React Flow doesn't remount nodes on re-render.
-const NODE_TYPES = { op: PipelineOpNode };
+const NODE_TYPES = { op: PipelineOpNode, "pipeline-input": PipelineInputNode };
 
 export type OpNode = Node<OpNodeData, "op">;
 
@@ -37,8 +39,18 @@ function graphToFlow(
   onUpdateParam: (nodeId: string, key: string, value: string) => void,
   onRemoveNode: (nodeId: string) => void,
   selectedNodeId: string | null,
-): { nodes: OpNode[]; edges: Edge[] } {
-  const nodes: OpNode[] = graph.nodes.map((n) => {
+): { nodes: Node[]; edges: Edge[] } {
+  const nodes: Node[] = graph.nodes.map((n) => {
+    if (n.id === INPUT_NODE_ID) {
+      return {
+        id: n.id,
+        type: "pipeline-input" as const,
+        position: n.position,
+        selected: n.id === selectedNodeId,
+        deletable: false,
+        data: {},
+      };
+    }
     const op = OPERATIONS.find((o) => o.id === n.operationId);
     return {
       id: n.id,
@@ -64,16 +76,12 @@ function graphToFlow(
   return { nodes, edges };
 }
 
-function flowToGraph(
-  rfNodes: Node[],
-  rfEdges: Edge[],
-  originalGraph: PipelineGraph,
-): PipelineGraph {
+function flowToGraph(rfNodes: Node[], rfEdges: Edge[]): PipelineGraph {
   return {
     nodes: rfNodes.map((n) => ({
       id: n.id,
-      operationId: (n.data as OpNodeData).operationId,
-      params: (n.data as OpNodeData).params,
+      operationId: n.id === INPUT_NODE_ID ? INPUT_NODE_ID : (n.data as OpNodeData).operationId,
+      params: n.id === INPUT_NODE_ID ? {} : (n.data as OpNodeData).params,
       position: n.position,
     })),
     edges: rfEdges.map((e) => ({
@@ -118,7 +126,7 @@ export function PipelineFlowEditor({
     selectedNodeId,
   );
 
-  const [rfNodes, setRFNodes, onRFNodesChange] = useNodesState<Node>(initialNodes as Node[]);
+  const [rfNodes, setRFNodes, onRFNodesChange] = useNodesState<Node>(initialNodes);
   const [rfEdges, setRFEdges, onRFEdgesChange] = useEdgesState(initialEdges);
 
   // Track the last graph that RF state was synced FROM to avoid feedback loops.
@@ -142,18 +150,17 @@ export function PipelineFlowEditor({
           const updatedNodes = rfNodes.map((n) =>
             n.id === change.id ? { ...n, position: change.position! } : n,
           );
-          const newGraph = flowToGraph(updatedNodes, rfEdges, graph);
+          const newGraph = flowToGraph(updatedNodes, rfEdges);
           prevGraphRef.current = newGraph;
           onGraphChange(newGraph);
           break;
         }
-        // Sync node removal to graph (e.g. Delete key).
-        if (change.type === "remove") {
+        // Sync node removal to graph (e.g. Delete key) — input node cannot be removed.
+        if (change.type === "remove" && change.id !== INPUT_NODE_ID) {
           if (change.id === selectedNodeId) onSelectNode(null);
           const newGraph = flowToGraph(
             rfNodes.filter((n) => n.id !== change.id),
             rfEdges,
-            graph,
           );
           prevGraphRef.current = newGraph;
           onGraphChange(newGraph);
@@ -176,7 +183,7 @@ export function PipelineFlowEditor({
       onRFEdgesChange(changes);
       for (const change of changes) {
         if (change.type === "remove") {
-          const newGraph = flowToGraph(rfNodes, rfEdges.filter((e) => e.id !== change.id), graph);
+          const newGraph = flowToGraph(rfNodes, rfEdges.filter((e) => e.id !== change.id));
           prevGraphRef.current = newGraph;
           onGraphChange(newGraph);
           break;
@@ -190,7 +197,7 @@ export function PipelineFlowEditor({
     (connection: Connection) => {
       const newEdges = addEdge(connection, rfEdges);
       setRFEdges(newEdges);
-      const newGraph = flowToGraph(rfNodes, newEdges, graph);
+      const newGraph = flowToGraph(rfNodes, newEdges);
       prevGraphRef.current = newGraph;
       onGraphChange(newGraph);
     },
@@ -199,6 +206,7 @@ export function PipelineFlowEditor({
 
   const isValidConnection: IsValidConnection = useCallback(
     (connection) => {
+      if (connection.target === INPUT_NODE_ID) return false;
       // Each node may only have one incoming edge (diverging only, not converging).
       const targetAlreadyHasParent = rfEdges.some((e) => e.target === connection.target);
       return !targetAlreadyHasParent && connection.source !== connection.target;

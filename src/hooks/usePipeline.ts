@@ -6,13 +6,24 @@ import type {
   PipelineNode,
   SavedPipelineV2,
 } from "@/lib/pipelineGraph";
+import { INPUT_NODE_ID } from "@/lib/pipelineGraph";
 import { OPERATIONS } from "@/lib/textOperations";
 import { useEffect, useRef, useState } from "react";
 
 const STORAGE_KEY = "glyph-weaver-pipelines";
 
+const INITIAL_INPUT_NODE: PipelineNode = {
+  id: INPUT_NODE_ID,
+  operationId: INPUT_NODE_ID,
+  params: {},
+  position: { x: 0, y: 0 },
+};
+
 export function usePipeline() {
-  const [graph, setGraph] = useState<PipelineGraph>({ nodes: [], edges: [] });
+  const [graph, setGraph] = useState<PipelineGraph>({
+    nodes: [INITIAL_INPUT_NODE],
+    edges: [],
+  });
   const [pipelineName, setPipelineName] = useState("");
   const [savedPipelines, setSavedPipelines] = useState<SavedPipelineV2[]>([]);
   const [showSaved, setShowSaved] = useState(false);
@@ -42,34 +53,31 @@ export function usePipeline() {
     for (const p of op?.params ?? []) params[p.key] = "";
 
     const newId = String(nextId.current++);
-    const parentId = selectedNodeId;
+    // Default parent is the selected node, or the input node if nothing is selected.
+    const parentId = selectedNodeId ?? INPUT_NODE_ID;
 
     setGraph((prev) => {
-      // Use the selected node as parent; fall back to the leaf of the main chain.
-      let parent = parentId ? prev.nodes.find((n) => n.id === parentId) : undefined;
-      if (!parent) {
-        const sourceIds = new Set(prev.edges.map((e) => e.source));
-        parent = prev.nodes.find((n) => !sourceIds.has(n.id));
-      }
+      const parent =
+        prev.nodes.find((n) => n.id === parentId) ??
+        prev.nodes.find((n) => n.id === INPUT_NODE_ID)!;
 
-      let position: { x: number; y: number };
-      if (parent) {
-        // Offset horizontally for each existing child so siblings don't overlap.
-        const siblingCount = prev.edges.filter((e) => e.source === parent!.id).length;
-        position = { x: parent.position.x + siblingCount * 240, y: parent.position.y + 130 };
-      } else {
-        const maxY = prev.nodes.reduce((m, n) => Math.max(m, n.position.y), -120);
-        position = { x: 200, y: maxY + 120 };
-      }
+      // Offset horizontally for each existing child so siblings don't overlap.
+      const siblingCount = prev.edges.filter((e) => e.source === parent.id).length;
+      const position = {
+        x: parent.position.x + siblingCount * 240,
+        y: parent.position.y + 130,
+      };
 
       const newNode: PipelineNode = { id: newId, operationId, params, position };
-      const newEdge: PipelineEdge | null = parent
-        ? { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId }
-        : null;
+      const newEdge: PipelineEdge = {
+        id: `e-${parent.id}-${newId}`,
+        source: parent.id,
+        target: newId,
+      };
 
       return {
         nodes: [...prev.nodes, newNode],
-        edges: newEdge ? [...prev.edges, newEdge] : prev.edges,
+        edges: [...prev.edges, newEdge],
       };
     });
 
@@ -86,6 +94,7 @@ export function usePipeline() {
   }
 
   function removeOperation(instanceId: string) {
+    if (instanceId === INPUT_NODE_ID) return;
     if (selectedNodeId === instanceId) setSelectedNodeId(null);
     setGraph((prev) => {
       const inEdge = prev.edges.find((e) => e.target === instanceId);
@@ -146,10 +155,30 @@ export function usePipeline() {
 
   function loadPipeline(saved: SavedPipelineV2) {
     setSelectedNodeId(null);
-    setGraph(saved.graph);
+    let g = saved.graph;
+    // Migrate graphs saved before the input node existed.
+    if (!g.nodes.some((n) => n.id === INPUT_NODE_ID)) {
+      const targetIds = new Set(g.edges.map((e) => e.target));
+      const rootIds = g.nodes.filter((n) => !targetIds.has(n.id)).map((n) => n.id);
+      g = {
+        nodes: [INITIAL_INPUT_NODE, ...g.nodes],
+        edges: [
+          ...g.edges,
+          ...rootIds.map((id) => ({
+            id: `e-${INPUT_NODE_ID}-${id}`,
+            source: INPUT_NODE_ID,
+            target: id,
+          })),
+        ],
+      };
+    }
+    setGraph(g);
     setPipelineName(saved.name);
     nextId.current =
-      saved.graph.nodes.reduce((max, node) => Math.max(max, Number(node.id)), -1) + 1;
+      g.nodes.reduce((max, node) => {
+        const n = Number(node.id);
+        return Number.isFinite(n) ? Math.max(max, n) : max;
+      }, -1) + 1;
   }
 
   function deleteSavedPipeline(id: string) {

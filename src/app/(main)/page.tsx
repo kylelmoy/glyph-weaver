@@ -4,7 +4,7 @@ import { Logo } from "@/components/Logo";
 import { PipelineFlowEditor } from "@/components/PipelineFlowEditor";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { usePipeline } from "@/hooks/usePipeline";
-import { processGraph } from "@/lib/pipelineGraph";
+import { INPUT_NODE_ID, processGraph } from "@/lib/pipelineGraph";
 import type { GraphOutput } from "@/lib/pipelineGraph";
 import { OPERATIONS, OPERATION_CATEGORIES } from "@/lib/textOperations";
 import {
@@ -221,7 +221,7 @@ export default function Home() {
                 size="l"
                 prefixIcon="save"
                 variant="secondary"
-                disabled={graph.nodes.length === 0}
+                disabled={graph.nodes.every((n) => n.id === INPUT_NODE_ID)}
                 onClick={savePipeline}
                 radius="right"
               >
@@ -288,38 +288,14 @@ export default function Home() {
 
         {/* ── Center: Flow canvas ── */}
         <Column style={{ flex: 1, overflow: "hidden", minWidth: 0 }}>
-          {graph.nodes.length === 0 ? (
-            <Column
-              fillWidth
-              fillHeight
-              horizontal="center"
-              vertical="center"
-              gap="s"
-              padding="xl"
-            >
-              <Text variant="heading-strong-xs" onBackground="neutral-weak">
-                Welcome to Glyph Weaver
-              </Text>
-              <Text
-                variant="body-default-s"
-                onBackground="neutral-weak"
-                align="center"
-                style={{ maxWidth: 360 }}
-              >
-                Build text transformation pipelines visually. Select a node before adding an
-                operation to branch the graph.
-              </Text>
-            </Column>
-          ) : (
-            <PipelineFlowEditor
-              graph={graph}
-              onGraphChange={setGraph}
-              onUpdateParam={handleUpdateParam}
-              onRemoveNode={handleRemoveNode}
-              selectedNodeId={selectedNodeId}
-              onSelectNode={setSelectedNodeId}
-            />
-          )}
+          <PipelineFlowEditor
+            graph={graph}
+            onGraphChange={setGraph}
+            onUpdateParam={handleUpdateParam}
+            onRemoveNode={handleRemoveNode}
+            selectedNodeId={selectedNodeId}
+            onSelectNode={setSelectedNodeId}
+          />
         </Column>
 
         {/* ── Right: Input / Output ── */}
