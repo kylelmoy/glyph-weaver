@@ -57,18 +57,18 @@ export default function RootLayout({
                   
                   // Set defaults from config
                   const config = ${JSON.stringify({
-                    theme: style.theme,
-                    brand: style.brand,
-                    accent: style.accent,
-                    neutral: style.neutral,
-                    solid: style.solid,
-                    "solid-style": style.solidStyle,
-                    border: style.border,
-                    surface: style.surface,
-                    transition: style.transition,
-                    scaling: style.scaling,
-                    "viz-style": dataStyle.variant,
-                  })};
+              theme: style.theme,
+              brand: style.brand,
+              accent: style.accent,
+              neutral: style.neutral,
+              solid: style.solid,
+              "solid-style": style.solidStyle,
+              border: style.border,
+              surface: style.surface,
+              transition: style.transition,
+              scaling: style.scaling,
+              "viz-style": dataStyle.variant,
+            })};
                   
                   // Apply default values
                   Object.entries(config).forEach(([key, value]) => {
@@ -117,8 +117,8 @@ export default function RootLayout({
             top="0"
             left="0"
           >
-            <Mask maxWidth="m" x={50} y={0} radius={30}>
-              <MatrixFx size={2} spacing={5} fps={24} colors={["brand-solid-strong"]} flicker />
+            <Mask x={10} y={-10} radius={30}>
+              <MatrixFx size={3} spacing={5} fps={24} colors={["brand-solid-strong", "accent-solid-strong"]} flicker />
             </Mask>
           </Column>
           {children}
