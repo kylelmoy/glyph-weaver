@@ -11,6 +11,7 @@ import { OPERATIONS } from "@/lib/textOperations";
 import { useEffect, useRef, useState } from "react";
 
 const STORAGE_KEY = "glyph-weaver-pipelines";
+const SESSION_KEY = "glyph-weaver-session";
 
 const INITIAL_INPUT_NODE: PipelineNode = {
   id: INPUT_NODE_ID,
@@ -18,6 +19,32 @@ const INITIAL_INPUT_NODE: PipelineNode = {
   params: {},
   position: { x: 0, y: 0 },
 };
+
+function ensureInputNode(g: PipelineGraph): PipelineGraph {
+  if (g.nodes.some((n) => n.id === INPUT_NODE_ID)) return g;
+  const targetIds = new Set(g.edges.map((e) => e.target));
+  const rootIds = g.nodes.filter((n) => !targetIds.has(n.id)).map((n) => n.id);
+  return {
+    nodes: [INITIAL_INPUT_NODE, ...g.nodes],
+    edges: [
+      ...g.edges,
+      ...rootIds.map((id) => ({
+        id: `e-${INPUT_NODE_ID}-${id}`,
+        source: INPUT_NODE_ID,
+        target: id,
+      })),
+    ],
+  };
+}
+
+function computeNextId(g: PipelineGraph): number {
+  return (
+    g.nodes.reduce((max, node) => {
+      const n = Number(node.id);
+      return Number.isFinite(n) ? Math.max(max, n) : max;
+    }, -1) + 1
+  );
+}
 
 export function usePipeline() {
   const [graph, setGraph] = useState<PipelineGraph>({
@@ -30,17 +57,36 @@ export function usePipeline() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const nextId = useRef(0);
+  // Counts how many times the graph auto-save effect has fired; skip the first
+  // to avoid overwriting a restored session with the default initial graph.
+  const sessionSaveCount = useRef(0);
 
+  // Load saved pipelines list and restore the active session graph.
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
-      if (!stored) return;
-      const raw = JSON.parse(stored) as SavedPipelineV2[];
-      setSavedPipelines(raw);
-    } catch {
-      // Ignore malformed storage data.
-    }
+      if (stored) setSavedPipelines(JSON.parse(stored) as SavedPipelineV2[]);
+    } catch {}
+
+    try {
+      const stored = localStorage.getItem(SESSION_KEY);
+      if (stored) {
+        const { graph: savedGraph } = JSON.parse(stored) as { graph: PipelineGraph };
+        const g = ensureInputNode(savedGraph);
+        setGraph(g);
+        nextId.current = computeNextId(g);
+      }
+    } catch {}
   }, []);
+
+  // Auto-save the active graph to session storage on every change.
+  useEffect(() => {
+    sessionSaveCount.current++;
+    if (sessionSaveCount.current === 1) return; // skip initial render
+    try {
+      localStorage.setItem(SESSION_KEY, JSON.stringify({ graph }));
+    } catch {}
+  }, [graph]);
 
   function persist(updated: SavedPipelineV2[]) {
     setSavedPipelines(updated);
@@ -53,7 +99,6 @@ export function usePipeline() {
     for (const p of op?.params ?? []) params[p.key] = "";
 
     const newId = String(nextId.current++);
-    // Default parent is the selected node, or the input node if nothing is selected.
     const parentId = selectedNodeId ?? INPUT_NODE_ID;
 
     setGraph((prev) => {
@@ -61,7 +106,6 @@ export function usePipeline() {
         prev.nodes.find((n) => n.id === parentId) ??
         prev.nodes.find((n) => n.id === INPUT_NODE_ID)!;
 
-      // Offset horizontally for each existing child so siblings don't overlap.
       const siblingCount = prev.edges.filter((e) => e.source === parent.id).length;
       const position = {
         x: parent.position.x + siblingCount * 240,
@@ -155,30 +199,10 @@ export function usePipeline() {
 
   function loadPipeline(saved: SavedPipelineV2) {
     setSelectedNodeId(null);
-    let g = saved.graph;
-    // Migrate graphs saved before the input node existed.
-    if (!g.nodes.some((n) => n.id === INPUT_NODE_ID)) {
-      const targetIds = new Set(g.edges.map((e) => e.target));
-      const rootIds = g.nodes.filter((n) => !targetIds.has(n.id)).map((n) => n.id);
-      g = {
-        nodes: [INITIAL_INPUT_NODE, ...g.nodes],
-        edges: [
-          ...g.edges,
-          ...rootIds.map((id) => ({
-            id: `e-${INPUT_NODE_ID}-${id}`,
-            source: INPUT_NODE_ID,
-            target: id,
-          })),
-        ],
-      };
-    }
+    const g = ensureInputNode(saved.graph);
     setGraph(g);
     setPipelineName(saved.name);
-    nextId.current =
-      g.nodes.reduce((max, node) => {
-        const n = Number(node.id);
-        return Number.isFinite(n) ? Math.max(max, n) : max;
-      }, -1) + 1;
+    nextId.current = computeNextId(g);
   }
 
   function deleteSavedPipeline(id: string) {

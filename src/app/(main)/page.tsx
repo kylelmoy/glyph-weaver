@@ -19,10 +19,26 @@ import {
   Text,
   Textarea,
 } from "@once-ui-system/core";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export default function Home() {
   const [inputText, setInputText] = useState("");
+  const inputSaveCount = useRef(0);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("glyph-weaver-session-input");
+      if (stored !== null) setInputText(stored);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    inputSaveCount.current++;
+    if (inputSaveCount.current === 1) return;
+    try {
+      localStorage.setItem("glyph-weaver-session-input", inputText);
+    } catch {}
+  }, [inputText]);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     () => new Set(["Recent", "Custom", "Sorting", "Filtering"]),
   );
@@ -80,10 +96,10 @@ export default function Home() {
   const searchQuery = operationSearch.trim().toLowerCase();
   const filteredOps = searchQuery
     ? OPERATIONS.filter(
-        (op) =>
-          op.name.toLowerCase().includes(searchQuery) ||
-          op.description.toLowerCase().includes(searchQuery),
-      )
+      (op) =>
+        op.name.toLowerCase().includes(searchQuery) ||
+        op.description.toLowerCase().includes(searchQuery),
+    )
     : null;
 
   return (
@@ -370,7 +386,7 @@ export default function Home() {
               </Heading>
               <Textarea
                 id="input"
-                placeholder="Paste text here..."
+                placeholder="Insert your text here..."
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 lines={8}
