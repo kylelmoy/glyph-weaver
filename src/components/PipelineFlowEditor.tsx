@@ -22,7 +22,7 @@ import { PipelineOpNode } from "@/components/PipelineOpNode";
 import type { OpNodeData } from "@/components/PipelineOpNode";
 import type { PipelineGraph } from "@/lib/pipelineGraph";
 import { OPERATIONS } from "@/lib/textOperations";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, type MouseEvent } from "react";
 
 // Define node types outside the component so React Flow doesn't remount nodes on re-render.
 const NODE_TYPES = { op: PipelineOpNode };
@@ -35,6 +35,7 @@ function graphToFlow(
   graph: PipelineGraph,
   onUpdateParam: (nodeId: string, key: string, value: string) => void,
   onRemoveNode: (nodeId: string) => void,
+  selectedNodeId: string | null,
 ): { nodes: OpNode[]; edges: Edge[] } {
   const nodes: OpNode[] = graph.nodes.map((n) => {
     const op = OPERATIONS.find((o) => o.id === n.operationId);
@@ -42,13 +43,13 @@ function graphToFlow(
       id: n.id,
       type: "op" as const,
       position: n.position,
+      selected: n.id === selectedNodeId,
       data: {
         operationId: n.operationId,
         params: n.params,
         onUpdateParam: (key: string, value: string) => onUpdateParam(n.id, key, value),
         onRemove: () => onRemoveNode(n.id),
       },
-      // Pass op name as aria label for accessibility
       ariaLabel: op?.name,
     };
   });
@@ -89,6 +90,8 @@ interface PipelineFlowEditorProps {
   onGraphChange: (graph: PipelineGraph) => void;
   onUpdateParam: (nodeId: string, key: string, value: string) => void;
   onRemoveNode: (nodeId: string) => void;
+  selectedNodeId: string | null;
+  onSelectNode: (id: string | null) => void;
 }
 
 export function PipelineFlowEditor({
@@ -96,11 +99,14 @@ export function PipelineFlowEditor({
   onGraphChange,
   onUpdateParam,
   onRemoveNode,
+  selectedNodeId,
+  onSelectNode,
 }: PipelineFlowEditorProps) {
   const { nodes: initialNodes, edges: initialEdges } = graphToFlow(
     graph,
     onUpdateParam,
     onRemoveNode,
+    selectedNodeId,
   );
 
   const [rfNodes, setRFNodes, onRFNodesChange] = useNodesState<Node>(initialNodes as Node[]);
@@ -113,70 +119,73 @@ export function PipelineFlowEditor({
   useEffect(() => {
     if (prevGraphRef.current === graph) return;
     prevGraphRef.current = graph;
-    const { nodes, edges } = graphToFlow(graph, onUpdateParam, onRemoveNode);
+    const { nodes, edges } = graphToFlow(graph, onUpdateParam, onRemoveNode, selectedNodeId);
     setRFNodes(nodes);
     setRFEdges(edges);
-  }, [graph, onUpdateParam, onRemoveNode, setRFNodes, setRFEdges]);
+  }, [graph, onUpdateParam, onRemoveNode, selectedNodeId, setRFNodes, setRFEdges]);
 
   const handleNodesChange: OnNodesChange<Node> = useCallback(
     (changes) => {
       onRFNodesChange(changes);
-      setRFNodes((currentNodes) => {
-        for (const change of changes) {
-          // Sync final drag position to graph (not during drag, to avoid excessive updates).
-          if (change.type === "position" && !change.dragging && change.position) {
-            const newGraph = flowToGraph(currentNodes, rfEdges, graph);
-            prevGraphRef.current = newGraph;
-            onGraphChange(newGraph);
-            break;
-          }
-          // Sync node removal to graph.
-          if (change.type === "remove") {
-            const newGraph = flowToGraph(
-              currentNodes.filter((n) => n.id !== change.id),
-              rfEdges,
-              graph,
-            );
-            prevGraphRef.current = newGraph;
-            onGraphChange(newGraph);
-            break;
-          }
+      for (const change of changes) {
+        // Sync final drag position to graph (not during drag, to avoid excessive updates).
+        if (change.type === "position" && !change.dragging && change.position) {
+          const updatedNodes = rfNodes.map((n) =>
+            n.id === change.id ? { ...n, position: change.position! } : n,
+          );
+          const newGraph = flowToGraph(updatedNodes, rfEdges, graph);
+          prevGraphRef.current = newGraph;
+          onGraphChange(newGraph);
+          break;
         }
-        return currentNodes;
-      });
+        // Sync node removal to graph (e.g. Delete key).
+        if (change.type === "remove") {
+          if (change.id === selectedNodeId) onSelectNode(null);
+          const newGraph = flowToGraph(
+            rfNodes.filter((n) => n.id !== change.id),
+            rfEdges,
+            graph,
+          );
+          prevGraphRef.current = newGraph;
+          onGraphChange(newGraph);
+          break;
+        }
+      }
     },
-    [onRFNodesChange, setRFNodes, rfEdges, graph, onGraphChange],
+    [onRFNodesChange, rfNodes, rfEdges, graph, onGraphChange, selectedNodeId, onSelectNode],
   );
+
+  const handleNodeClick = useCallback(
+    (_e: MouseEvent, node: Node) => onSelectNode(node.id),
+    [onSelectNode],
+  );
+
+  const handlePaneClick = useCallback(() => onSelectNode(null), [onSelectNode]);
 
   const handleEdgesChange: OnEdgesChange = useCallback(
     (changes) => {
       onRFEdgesChange(changes);
-      setRFEdges((currentEdges) => {
-        for (const change of changes) {
-          if (change.type === "remove") {
-            const newGraph = flowToGraph(rfNodes, currentEdges, graph);
-            prevGraphRef.current = newGraph;
-            onGraphChange(newGraph);
-            break;
-          }
+      for (const change of changes) {
+        if (change.type === "remove") {
+          const newGraph = flowToGraph(rfNodes, rfEdges.filter((e) => e.id !== change.id), graph);
+          prevGraphRef.current = newGraph;
+          onGraphChange(newGraph);
+          break;
         }
-        return currentEdges;
-      });
+      }
     },
-    [onRFEdgesChange, setRFEdges, rfNodes, graph, onGraphChange],
+    [onRFEdgesChange, rfNodes, rfEdges, graph, onGraphChange],
   );
 
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
-      setRFEdges((currentEdges) => {
-        const newEdges = addEdge(connection, currentEdges);
-        const newGraph = flowToGraph(rfNodes, newEdges, graph);
-        prevGraphRef.current = newGraph;
-        onGraphChange(newGraph);
-        return newEdges;
-      });
+      const newEdges = addEdge(connection, rfEdges);
+      setRFEdges(newEdges);
+      const newGraph = flowToGraph(rfNodes, newEdges, graph);
+      prevGraphRef.current = newGraph;
+      onGraphChange(newGraph);
     },
-    [setRFEdges, rfNodes, graph, onGraphChange],
+    [setRFEdges, rfEdges, rfNodes, graph, onGraphChange],
   );
 
   const isValidConnection: IsValidConnection = useCallback(
@@ -197,7 +206,10 @@ export function PipelineFlowEditor({
         onEdgesChange={handleEdgesChange}
         onConnect={onConnect}
         isValidConnection={isValidConnection}
+        onNodeClick={handleNodeClick}
+        onPaneClick={handlePaneClick}
         nodeTypes={NODE_TYPES}
+        multiSelectionKeyCode={null}
         fitView
         deleteKeyCode="Delete"
       >

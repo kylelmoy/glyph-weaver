@@ -1,5 +1,4 @@
 import { OPERATIONS } from "./textOperations";
-import type { PipelineItem, SavedPipeline } from "./textOperations";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -19,7 +18,7 @@ export interface PipelineEdge {
   target: string;
 }
 
-/** The full DAG that replaces the linear PipelineItem[]. */
+/** The full pipeline DAG. */
 export interface PipelineGraph {
   nodes: PipelineNode[];
   edges: PipelineEdge[];
@@ -32,15 +31,6 @@ export interface SavedPipelineV2 {
   savedAt: number;
   version: 2;
   graph: PipelineGraph;
-}
-
-/** Union of what may be read from localStorage. */
-export type AnyPersistedPipeline = SavedPipeline | SavedPipelineV2;
-
-// ── Type guards ───────────────────────────────────────────────────────────────
-
-export function isSavedPipelineV2(p: AnyPersistedPipeline): p is SavedPipelineV2 {
-  return (p as SavedPipelineV2).version === 2;
 }
 
 // ── Graph processing ──────────────────────────────────────────────────────────
@@ -123,84 +113,3 @@ export function processGraph(input: string, graph: PipelineGraph): GraphOutput[]
     : [{ id: "__empty__", text: "" }];
 }
 
-// ── Conversion helpers ────────────────────────────────────────────────────────
-
-/**
- * Convert a linear PipelineItem[] to a single-chain PipelineGraph.
- * Nodes are stacked vertically at x=200, spaced 120px apart.
- */
-export function linearItemsToGraph(items: PipelineItem[]): PipelineGraph {
-  const nodes: PipelineNode[] = items.map((item, i) => ({
-    id: item.instanceId,
-    operationId: item.operationId,
-    params: item.params,
-    position: { x: 200, y: i * 120 },
-  }));
-
-  const edges: PipelineEdge[] = items.slice(1).map((item, i) => ({
-    id: `e-${items[i].instanceId}-${item.instanceId}`,
-    source: items[i].instanceId,
-    target: item.instanceId,
-  }));
-
-  return { nodes, edges };
-}
-
-/**
- * Flatten a PipelineGraph back to a PipelineItem[] by topological sort.
- * Used to keep the existing list-view UI working without changes.
- */
-export function graphToLinearItems(graph: PipelineGraph): PipelineItem[] {
-  if (graph.nodes.length === 0) return [];
-
-  const childrenOf = new Map<string, string[]>();
-  const inDegree = new Map<string, number>();
-  for (const node of graph.nodes) {
-    childrenOf.set(node.id, []);
-    inDegree.set(node.id, 0);
-  }
-  for (const edge of graph.edges) {
-    childrenOf.get(edge.source)?.push(edge.target);
-    inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
-  }
-
-  const queue: string[] = [];
-  for (const [id, deg] of inDegree) {
-    if (deg === 0) queue.push(id);
-  }
-  const order: string[] = [];
-  while (queue.length > 0) {
-    const id = queue.shift();
-    if (id === undefined) break;
-    order.push(id);
-    for (const child of childrenOf.get(id) ?? []) {
-      const d = (inDegree.get(child) ?? 1) - 1;
-      inDegree.set(child, d);
-      if (d === 0) queue.push(child);
-    }
-  }
-
-  const nodeById = new Map(graph.nodes.map((n) => [n.id, n]));
-  return order.flatMap((id) => {
-    const n = nodeById.get(id);
-    if (!n) return [];
-    return [{ instanceId: n.id, operationId: n.operationId, params: n.params }];
-  });
-}
-
-// ── Migration ─────────────────────────────────────────────────────────────────
-
-/**
- * Convert a legacy v1 SavedPipeline (with pipeline: PipelineItem[]) to
- * SavedPipelineV2 (with graph: PipelineGraph). Positions are auto-generated
- * in a single vertical chain so the React Flow canvas immediately looks clean.
- */
-export function migrateSavedPipeline(saved: SavedPipeline): SavedPipelineV2 {
-  return {
-    id: saved.id,
-    name: saved.name,
-    savedAt: saved.savedAt,
-    version: 2,
-    graph: linearItemsToGraph(saved.pipeline ?? []),
-  };
-}

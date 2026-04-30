@@ -1,19 +1,10 @@
 "use client";
 
-/**
- * Home — the single-page UI for Glyph Weaver.
- *
- * Layout: Input (left) | Output (right) → Pipeline builder (left) + Operations palette (right).
- * All pipeline state lives in the `usePipeline` hook; text processing is a
- * pure memoized derivation via `processText`.
- */
-
 import { Logo } from "@/components/Logo";
 import { PipelineFlowEditor } from "@/components/PipelineFlowEditor";
-import { PipelineStep } from "@/components/PipelineStep";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { usePipeline } from "@/hooks/usePipeline";
-import { isSavedPipelineV2, processGraph } from "@/lib/pipelineGraph";
+import { processGraph } from "@/lib/pipelineGraph";
 import type { GraphOutput } from "@/lib/pipelineGraph";
 import { OPERATIONS, OPERATION_CATEGORIES } from "@/lib/textOperations";
 import {
@@ -29,6 +20,7 @@ import {
   Textarea,
 } from "@once-ui-system/core";
 import { useCallback, useMemo, useState } from "react";
+
 
 export default function Home() {
   const [inputText, setInputText] = useState("");
@@ -46,12 +38,11 @@ export default function Home() {
     });
   };
 
-  const [viewMode, setViewMode] = useState<"list" | "flow">("list");
-
   const {
     graph,
     setGraph,
-    pipeline,
+    selectedNodeId,
+    setSelectedNodeId,
     pipelineName,
     setPipelineName,
     savedPipelines,
@@ -60,7 +51,6 @@ export default function Home() {
     addOperation,
     updateParam,
     removeOperation,
-    moveOperation,
     savePipeline,
     loadPipeline,
     deleteSavedPipeline,
@@ -165,35 +155,11 @@ export default function Home() {
         {/* ── Active Pipeline ── */}
         <Column flex={1} padding="m" radius="m">
           <Column fillWidth fillHeight>
-            <Row fillWidth vertical="center" horizontal="between" marginBottom="s">
-              <Heading variant="heading-strong-xs">Pipeline</Heading>
-              <Row gap="xs">
-                <Button
-                  size="s"
-                  variant={viewMode === "list" ? "primary" : "secondary"}
-                  onClick={() => setViewMode("list")}
-                >
-                  List
-                </Button>
-                <Button
-                  size="s"
-                  variant={viewMode === "flow" ? "primary" : "secondary"}
-                  onClick={() => setViewMode("flow")}
-                >
-                  Flow
-                </Button>
-              </Row>
-            </Row>
+            <Heading variant="heading-strong-xs" marginBottom="s">
+              Pipeline
+            </Heading>
 
-            {viewMode === "flow" ? (
-              <PipelineFlowEditor
-                graph={graph}
-                onGraphChange={setGraph}
-                onUpdateParam={handleUpdateParam}
-                onRemoveNode={handleRemoveNode}
-              />
-            ) : pipeline.length === 0 ? (
-              // Empty state — shown before any operation is added
+            {graph.nodes.length === 0 ? (
               <Column gap="s">
                 <Text variant="body-strong-s" onBackground="neutral-weak">
                   Welcome to Glyph Weaver!
@@ -208,23 +174,14 @@ export default function Home() {
                 </Text>
               </Column>
             ) : (
-              pipeline.map((item, index) => {
-                const op = OPERATIONS.find((o) => o.id === item.operationId);
-                if (!op) return null;
-                return (
-                  <PipelineStep
-                    key={item.instanceId}
-                    item={item}
-                    op={op}
-                    index={index}
-                    isFirst={index === 0}
-                    isLast={index === pipeline.length - 1}
-                    onUpdate={(key, value) => updateParam(item.instanceId, key, value)}
-                    onRemove={() => removeOperation(item.instanceId)}
-                    onMove={(direction) => moveOperation(index, direction)}
-                  />
-                );
-              })
+              <PipelineFlowEditor
+                graph={graph}
+                onGraphChange={setGraph}
+                onUpdateParam={handleUpdateParam}
+                onRemoveNode={handleRemoveNode}
+                selectedNodeId={selectedNodeId}
+                onSelectNode={setSelectedNodeId}
+              />
             )}
           </Column>
 
@@ -279,15 +236,8 @@ export default function Home() {
                         <Column gap="2">
                           <Text variant="label-strong-s">{saved.name}</Text>
                           <Text variant="body-default-xs" onBackground="neutral-weak">
-                            {isSavedPipelineV2(saved)
-                              ? saved.graph.nodes.length
-                              : saved.pipeline.length}{" "}
-                            op
-                            {(isSavedPipelineV2(saved)
-                              ? saved.graph.nodes.length
-                              : saved.pipeline.length) !== 1
-                              ? "s"
-                              : ""}
+                            {saved.graph.nodes.length} op
+                            {saved.graph.nodes.length !== 1 ? "s" : ""}
                             {" · "}
                             {new Date(saved.savedAt).toLocaleDateString()}
                           </Text>
@@ -428,7 +378,7 @@ export default function Home() {
             size="l"
             prefixIcon="save"
             variant="secondary"
-            disabled={pipeline.length === 0}
+            disabled={graph.nodes.length === 0}
             onClick={savePipeline}
             radius="right"
           >
@@ -451,12 +401,7 @@ export default function Home() {
                 <Column gap="2">
                   <Text variant="label-strong-s">{saved.name}</Text>
                   <Text variant="body-default-xs" onBackground="neutral-weak">
-                    {isSavedPipelineV2(saved) ? saved.graph.nodes.length : saved.pipeline.length} op
-                    {(isSavedPipelineV2(saved)
-                      ? saved.graph.nodes.length
-                      : saved.pipeline.length) !== 1
-                      ? "s"
-                      : ""}
+                    {saved.graph.nodes.length} op{saved.graph.nodes.length !== 1 ? "s" : ""}
                     {" · "}
                     {new Date(saved.savedAt).toLocaleDateString()}
                   </Text>

@@ -12,7 +12,7 @@ export interface OpNodeData extends Record<string, unknown> {
   onRemove: () => void;
 }
 
-export function PipelineOpNode({ id, data }: NodeProps) {
+export function PipelineOpNode({ id, data, selected }: NodeProps) {
   const nodeData = data as OpNodeData;
   const op = OPERATIONS.find((o) => o.id === nodeData.operationId);
   if (!op) return null;
@@ -21,7 +21,7 @@ export function PipelineOpNode({ id, data }: NodeProps) {
     <div
       style={{
         background: "var(--background-page)",
-        border: "1px solid var(--neutral-alpha-medium)",
+        border: `2px solid ${selected ? "var(--accent-solid-strong)" : "var(--neutral-alpha-medium)"}`,
         borderRadius: "var(--radius-m)",
         minWidth: 200,
         maxWidth: 280,

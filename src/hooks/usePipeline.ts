@@ -1,82 +1,70 @@
 "use client";
 
-import {
-  graphToLinearItems,
-  isSavedPipelineV2,
-  linearItemsToGraph,
-  migrateSavedPipeline,
-} from "@/lib/pipelineGraph";
 import type {
-  AnyPersistedPipeline,
   PipelineEdge,
   PipelineGraph,
   PipelineNode,
   SavedPipelineV2,
 } from "@/lib/pipelineGraph";
 import { OPERATIONS } from "@/lib/textOperations";
-import type { PipelineItem } from "@/lib/textOperations";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const STORAGE_KEY = "glyph-weaver-pipelines";
 
 export function usePipeline() {
   const [graph, setGraph] = useState<PipelineGraph>({ nodes: [], edges: [] });
   const [pipelineName, setPipelineName] = useState("");
-  const [savedPipelines, setSavedPipelines] = useState<AnyPersistedPipeline[]>([]);
+  const [savedPipelines, setSavedPipelines] = useState<SavedPipelineV2[]>([]);
   const [showSaved, setShowSaved] = useState(false);
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const nextId = useRef(0);
-
-  // Derived linear view for the list UI — recomputed whenever graph changes.
-  const pipeline: PipelineItem[] = useMemo(() => graphToLinearItems(graph), [graph]);
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (!stored) return;
-      const raw = JSON.parse(stored) as AnyPersistedPipeline[];
-      // Eagerly migrate any v1 entries to v2 and write back so future loads are clean.
-      const migrated = raw.map((entry) =>
-        isSavedPipelineV2(entry) ? entry : migrateSavedPipeline(entry),
-      );
-      setSavedPipelines(migrated);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(migrated));
+      const raw = JSON.parse(stored) as SavedPipelineV2[];
+      setSavedPipelines(raw);
     } catch {
       // Ignore malformed storage data.
     }
   }, []);
 
-  function persist(updated: AnyPersistedPipeline[]) {
+  function persist(updated: SavedPipelineV2[]) {
     setSavedPipelines(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   }
 
-  /**
-   * Append a new operation as the next node in the main chain.
-   * Finds the current leaf (no outgoing edges), adds the new node below it,
-   * and connects them with an edge.
-   */
   function addOperation(operationId: string) {
     const op = OPERATIONS.find((o) => o.id === operationId);
     const params: Record<string, string> = {};
     for (const p of op?.params ?? []) params[p.key] = "";
 
     const newId = String(nextId.current++);
+    const parentId = selectedNodeId;
 
     setGraph((prev) => {
-      const targetIds = new Set(prev.edges.map((e) => e.target));
-      const leaf = prev.nodes.find((n) => !targetIds.has(n.id));
-      const maxY = prev.nodes.reduce((m, n) => Math.max(m, n.position.y), -120);
+      // Use the selected node as parent; fall back to the leaf of the main chain.
+      let parent = parentId ? prev.nodes.find((n) => n.id === parentId) : undefined;
+      if (!parent) {
+        const sourceIds = new Set(prev.edges.map((e) => e.source));
+        parent = prev.nodes.find((n) => !sourceIds.has(n.id));
+      }
 
-      const newNode: PipelineNode = {
-        id: newId,
-        operationId,
-        params,
-        position: { x: 200, y: maxY + 120 },
-      };
+      let position: { x: number; y: number };
+      if (parent) {
+        // Offset horizontally for each existing child so siblings don't overlap.
+        const siblingCount = prev.edges.filter((e) => e.source === parent!.id).length;
+        position = { x: parent.position.x + siblingCount * 240, y: parent.position.y + 130 };
+      } else {
+        const maxY = prev.nodes.reduce((m, n) => Math.max(m, n.position.y), -120);
+        position = { x: 200, y: maxY + 120 };
+      }
 
-      const newEdge: PipelineEdge | null = leaf
-        ? { id: `e-${leaf.id}-${newId}`, source: leaf.id, target: newId }
+      const newNode: PipelineNode = { id: newId, operationId, params, position };
+      const newEdge: PipelineEdge | null = parent
+        ? { id: `e-${parent.id}-${newId}`, source: parent.id, target: newId }
         : null;
 
       return {
@@ -84,6 +72,8 @@ export function usePipeline() {
         edges: newEdge ? [...prev.edges, newEdge] : prev.edges,
       };
     });
+
+    setSelectedNodeId(newId);
   }
 
   function updateParam(instanceId: string, key: string, value: string) {
@@ -95,11 +85,8 @@ export function usePipeline() {
     }));
   }
 
-  /**
-   * Remove a node and its edges. If the removed node had both a parent and a
-   * child in the chain, bridge them so the chain stays connected.
-   */
   function removeOperation(instanceId: string) {
+    if (selectedNodeId === instanceId) setSelectedNodeId(null);
     setGraph((prev) => {
       const inEdge = prev.edges.find((e) => e.target === instanceId);
       const outEdge = prev.edges.find((e) => e.source === instanceId);
@@ -117,21 +104,6 @@ export function usePipeline() {
         nodes: prev.nodes.filter((n) => n.id !== instanceId),
         edges: remaining,
       };
-    });
-  }
-
-  /**
-   * Reorder in list view: flatten to items, swap, rebuild as a chain.
-   * Only meaningful when the graph is a single linear chain.
-   */
-  function moveOperation(index: number, direction: "up" | "down") {
-    setGraph((prev) => {
-      const items = graphToLinearItems(prev);
-      const targetIndex = direction === "up" ? index - 1 : index + 1;
-      if (targetIndex < 0 || targetIndex >= items.length) return prev;
-      const next = [...items];
-      [next[index], next[targetIndex]] = [next[targetIndex], next[index]];
-      return linearItemsToGraph(next);
     });
   }
 
@@ -172,11 +144,12 @@ export function usePipeline() {
     );
   }
 
-  function loadPipeline(saved: AnyPersistedPipeline) {
-    const v2 = isSavedPipelineV2(saved) ? saved : migrateSavedPipeline(saved);
-    setGraph(v2.graph);
-    setPipelineName(v2.name);
-    nextId.current = v2.graph.nodes.reduce((max, node) => Math.max(max, Number(node.id)), -1) + 1;
+  function loadPipeline(saved: SavedPipelineV2) {
+    setSelectedNodeId(null);
+    setGraph(saved.graph);
+    setPipelineName(saved.name);
+    nextId.current =
+      saved.graph.nodes.reduce((max, node) => Math.max(max, Number(node.id)), -1) + 1;
   }
 
   function deleteSavedPipeline(id: string) {
@@ -186,7 +159,8 @@ export function usePipeline() {
   return {
     graph,
     setGraph,
-    pipeline,
+    selectedNodeId,
+    setSelectedNodeId,
     pipelineName,
     setPipelineName,
     savedPipelines,
@@ -195,7 +169,6 @@ export function usePipeline() {
     addOperation,
     updateParam,
     removeOperation,
-    moveOperation,
     updateNodePosition,
     addGraphEdge,
     removeGraphEdge,
