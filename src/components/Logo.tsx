@@ -20,7 +20,7 @@ export function Logo({ size = 32 }: { size?: number }) {
           d="M4,4L4,24"
           style={{
             fill: "none",
-            stroke: "black",
+            stroke: "currentColor",
             strokeWidth: 1,
           }}
         />
@@ -30,7 +30,7 @@ export function Logo({ size = 32 }: { size?: number }) {
           d="M4,4L4,24"
           style={{
             fill: "none",
-            stroke: "black",
+            stroke: "currentColor",
             strokeWidth: 1,
           }}
         />
@@ -40,7 +40,7 @@ export function Logo({ size = 32 }: { size?: number }) {
           d="M4,4L4,24"
           style={{
             fill: "none",
-            stroke: "black",
+            stroke: "currentColor",
             strokeWidth: 1,
           }}
         />
@@ -50,7 +50,7 @@ export function Logo({ size = 32 }: { size?: number }) {
           d="M4,4L4,24"
           style={{
             fill: "none",
-            stroke: "black",
+            stroke: "currentColor",
             strokeWidth: 1,
           }}
         />
@@ -70,7 +70,7 @@ export function Logo({ size = 32 }: { size?: number }) {
           d="M4,4L4,24"
           style={{
             fill: "none",
-            stroke: "black",
+            stroke: "currentColor",
             strokeWidth: 1,
           }}
         />
