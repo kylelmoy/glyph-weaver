@@ -209,6 +209,16 @@ export function usePipeline() {
     persist(savedPipelines.filter((s) => s.id !== id));
   }
 
+  function reset() {
+    setGraph({ nodes: [INITIAL_INPUT_NODE], edges: [] });
+    setPipelineName("");
+    setSelectedNodeId(null);
+    nextId.current = 0;
+    try {
+      localStorage.removeItem(SESSION_KEY);
+    } catch {}
+  }
+
   return {
     graph,
     setGraph,
@@ -228,5 +238,6 @@ export function usePipeline() {
     savePipeline,
     loadPipeline,
     deleteSavedPipeline,
+    reset,
   };
 }

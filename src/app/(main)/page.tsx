@@ -29,7 +29,7 @@ export default function Home() {
     try {
       const stored = localStorage.getItem("glyph-weaver-session-input");
       if (stored !== null) setInputText(stored);
-    } catch {}
+    } catch { }
   }, []);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function Home() {
     if (inputSaveCount.current === 1) return;
     try {
       localStorage.setItem("glyph-weaver-session-input", inputText);
-    } catch {}
+    } catch { }
   }, [inputText]);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     () => new Set(["Recent", "Custom", "Sorting", "Filtering"]),
@@ -69,6 +69,7 @@ export default function Home() {
     savePipeline,
     loadPipeline,
     deleteSavedPipeline,
+    reset,
   } = usePipeline();
 
   const handleUpdateParam = useCallback(
@@ -89,6 +90,14 @@ export default function Home() {
   };
 
   const outputs = useMemo(() => processGraph(inputText, graph), [inputText, graph]);
+
+  const handleReset = () => {
+    reset();
+    setInputText("");
+    try {
+      localStorage.removeItem("glyph-weaver-session-input");
+    } catch { }
+  };
 
   const [hoveredLeafId, setHoveredLeafId] = useState<string | null>(null);
   const [hoveredOutputId, setHoveredOutputId] = useState<string | null>(null);
@@ -117,7 +126,16 @@ export default function Home() {
           <Logo size={28} />
           <Heading as="h1">Glyph Weaver</Heading>
         </Row>
-        <ThemeToggle />
+        <Row gap="s" vertical="center">
+          <IconButton
+            icon="refresh"
+            size="s"
+            variant="ghost"
+            tooltip="Reset everything"
+            onClick={handleReset}
+          />
+          <ThemeToggle />
+        </Row>
       </Row>
 
       {/* ── 3-column body ── */}
@@ -408,7 +426,6 @@ export default function Home() {
                 <>
                   <Textarea
                     id="output"
-                    placeholder="Transformed text appears here"
                     value={outputs[0].text}
                     readOnly
                     lines={8}
