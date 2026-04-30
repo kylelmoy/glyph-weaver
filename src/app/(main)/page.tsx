@@ -76,6 +76,15 @@ export default function Home() {
 
   const [hoveredLeafId, setHoveredLeafId] = useState<string | null>(null);
   const [hoveredOutputId, setHoveredOutputId] = useState<string | null>(null);
+  const [operationSearch, setOperationSearch] = useState("");
+  const searchQuery = operationSearch.trim().toLowerCase();
+  const filteredOps = searchQuery
+    ? OPERATIONS.filter(
+        (op) =>
+          op.name.toLowerCase().includes(searchQuery) ||
+          op.description.toLowerCase().includes(searchQuery),
+      )
+    : null;
 
   return (
     <Column fillWidth style={{ height: "100dvh", overflow: "hidden" }}>
@@ -109,39 +118,121 @@ export default function Home() {
             overflow: "hidden",
           }}
         >
+          {/* Pinned heading + search */}
+          <Column gap="s" paddingX="m" paddingTop="m" style={{ flexShrink: 0 }}>
+            <Heading as="h4">Operations</Heading>
+            <Input
+              id="op-search"
+              placeholder="Search..."
+              value={operationSearch}
+              onChange={(e) => setOperationSearch(e.target.value)}
+              height="s"
+              hasSuffix={
+                operationSearch ? (
+                  <IconButton
+                    icon="close"
+                    size="s"
+                    variant="ghost"
+                    tooltip="Clear search"
+                    onClick={() => setOperationSearch("")}
+                  />
+                ) : undefined
+              }
+            />
+          </Column>
+
           {/* Scrollable operation list */}
           <Column gap="s" padding="m" style={{ flex: 1, overflowY: "auto" }}>
-            <Heading as="h4">
-              Operations
-            </Heading>
-
-            {recentOperationIds.length > 0 &&
-              (() => {
-                const isExpanded = expandedCategories.has("Recent");
-                return (
-                  <Column gap="4">
-                    <Row
+            {filteredOps ? (
+              filteredOps.length === 0 ? (
+                <Text variant="body-default-s" onBackground="neutral-weak">
+                  No results
+                </Text>
+              ) : (
+                <Column gap="4">
+                  {filteredOps.map((op) => (
+                    <Button
+                      key={op.id}
                       fillWidth
-                      vertical="center"
-                      horizontal="between"
-                      onClick={() => toggleCategory("Recent")}
-                      style={{ cursor: "pointer" }}
+                      size="s"
+                      variant="secondary"
+                      suffixIcon="plus"
+                      onClick={() => addOperationAndTrack(op.id)}
+                      title={op.description}
                     >
-                      <Heading as="h5">
-                        Recent
-                      </Heading>
-                      <Icon
-                        name={isExpanded ? "chevronUp" : "chevronDown"}
-                        size="xs"
-                        onBackground="neutral-weak"
-                      />
-                    </Row>
-                    {isExpanded && (
+                      {op.name}
+                    </Button>
+                  ))}
+                </Column>
+              )
+            ) : (
+              <>
+                {recentOperationIds.length > 0 &&
+                  (() => {
+                    const isExpanded = expandedCategories.has("Recent");
+                    return (
                       <Column gap="4">
-                        {recentOperationIds.map((id) => {
-                          const op = OPERATIONS.find((o) => o.id === id);
-                          if (!op) return null;
-                          return (
+                        <Row
+                          fillWidth
+                          vertical="center"
+                          horizontal="between"
+                          onClick={() => toggleCategory("Recent")}
+                          style={{ cursor: "pointer" }}
+                        >
+                          <Heading as="h5">Recent</Heading>
+                          <Icon
+                            name={isExpanded ? "chevronUp" : "chevronDown"}
+                            size="xs"
+                            onBackground="neutral-weak"
+                          />
+                        </Row>
+                        {isExpanded && (
+                          <Column gap="4">
+                            {recentOperationIds.map((id) => {
+                              const op = OPERATIONS.find((o) => o.id === id);
+                              if (!op) return null;
+                              return (
+                                <Button
+                                  key={op.id}
+                                  fillWidth
+                                  size="s"
+                                  variant="secondary"
+                                  suffixIcon="plus"
+                                  onClick={() => addOperationAndTrack(op.id)}
+                                  title={op.description}
+                                >
+                                  {op.name}
+                                </Button>
+                              );
+                            })}
+                          </Column>
+                        )}
+                      </Column>
+                    );
+                  })()}
+
+                {OPERATION_CATEGORIES.map((category) => {
+                  const ops = OPERATIONS.filter((op) => op.category === category);
+                  const isExpanded = expandedCategories.has(category);
+                  return (
+                    <Column key={category} gap="4">
+                      <Row
+                        fillWidth
+                        vertical="center"
+                        horizontal="between"
+                        onClick={() => toggleCategory(category)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <Heading as="h5">{category}</Heading>
+                        <Icon
+                          name={isExpanded ? "chevronUp" : "chevronDown"}
+                          size="xs"
+                          onBackground="neutral-weak"
+                        />
+                      </Row>
+                      {isExpanded && (
+                        <Column gap="4">
+                          {ops.map((op) => (
                             <Button
                               key={op.id}
                               fillWidth
@@ -153,55 +244,14 @@ export default function Home() {
                             >
                               {op.name}
                             </Button>
-                          );
-                        })}
-                      </Column>
-                    )}
-                  </Column>
-                );
-              })()}
-
-            {OPERATION_CATEGORIES.map((category) => {
-              const ops = OPERATIONS.filter((op) => op.category === category);
-              const isExpanded = expandedCategories.has(category);
-              return (
-                <Column key={category} gap="4">
-                  <Row
-                    fillWidth
-                    vertical="center"
-                    horizontal="between"
-                    onClick={() => toggleCategory(category)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <Heading as="h5">
-                      {category}
-                    </Heading>
-                    <Icon
-                      name={isExpanded ? "chevronUp" : "chevronDown"}
-                      size="xs"
-                      onBackground="neutral-weak"
-                    />
-                  </Row>
-                  {isExpanded && (
-                    <Column gap="4">
-                      {ops.map((op) => (
-                        <Button
-                          key={op.id}
-                          fillWidth
-                          size="s"
-                          variant="secondary"
-                          suffixIcon="plus"
-                          onClick={() => addOperationAndTrack(op.id)}
-                          title={op.description}
-                        >
-                          {op.name}
-                        </Button>
-                      ))}
+                          ))}
+                        </Column>
+                      )}
                     </Column>
-                  )}
-                </Column>
-              );
-            })}
+                  );
+                })}
+              </>
+            )}
           </Column>
 
           {/* Save / Load — always visible at bottom of sidebar */}
