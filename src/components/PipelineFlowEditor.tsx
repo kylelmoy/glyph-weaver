@@ -56,8 +56,20 @@ function graphToFlow(
   graph: PipelineGraph,
   onUpdateParam: (nodeId: string, key: string, value: string) => void,
   onRemoveNode: (nodeId: string) => void,
+  onSwapWithParent: (nodeId: string) => void,
+  onSwapWithChild: (nodeId: string) => void,
+  onSwapHover: (nodeId: string | null) => void,
   selectedNodeId: string | null,
 ): { nodes: Node[]; edges: Edge[] } {
+  // Build adjacency maps for canMoveUp/Down computation.
+  const parentOf = new Map<string, string>();
+  const childrenOf = new Map<string, string[]>();
+  for (const node of graph.nodes) childrenOf.set(node.id, []);
+  for (const edge of graph.edges) {
+    parentOf.set(edge.target, edge.source);
+    childrenOf.get(edge.source)?.push(edge.target);
+  }
+
   const nodes: Node[] = graph.nodes.map((n) => {
     if (n.id === INPUT_NODE_ID) {
       return {
@@ -69,6 +81,14 @@ function graphToFlow(
         data: {},
       };
     }
+
+    const parentId = parentOf.get(n.id);
+    const children = childrenOf.get(n.id) ?? [];
+    // Can move up: parent is a real op node (not the input node).
+    const canMoveUp = !!parentId && parentId !== INPUT_NODE_ID;
+    // Can move down: has exactly one child (child always has one parent by graph invariant).
+    const canMoveDown = children.length === 1;
+
     const op = OPERATIONS.find((o) => o.id === n.operationId);
     return {
       id: n.id,
@@ -80,6 +100,13 @@ function graphToFlow(
         params: n.params,
         onUpdateParam: (key: string, value: string) => onUpdateParam(n.id, key, value),
         onRemove: () => onRemoveNode(n.id),
+        onMoveUp: () => onSwapWithParent(n.id),
+        onMoveDown: () => onSwapWithChild(n.id),
+        canMoveUp,
+        canMoveDown,
+        onSwapHover,
+        swapUpTargetId: canMoveUp ? parentId : undefined,
+        swapDownTargetId: canMoveDown ? children[0] : undefined,
       },
       ariaLabel: op?.name,
     };
@@ -117,6 +144,8 @@ interface PipelineFlowEditorProps {
   onGraphChange: (graph: PipelineGraph) => void;
   onUpdateParam: (nodeId: string, key: string, value: string) => void;
   onRemoveNode: (nodeId: string) => void;
+  onSwapWithParent: (nodeId: string) => void;
+  onSwapWithChild: (nodeId: string) => void;
   selectedNodeId: string | null;
   onSelectNode: (id: string | null) => void;
   onHoverLeafNode: (id: string | null) => void;
@@ -128,6 +157,8 @@ export function PipelineFlowEditor({
   onGraphChange,
   onUpdateParam,
   onRemoveNode,
+  onSwapWithParent,
+  onSwapWithChild,
   selectedNodeId,
   onSelectNode,
   onHoverLeafNode,
@@ -141,10 +172,15 @@ export function PipelineFlowEditor({
     );
   }, [theme]);
 
+  const [swapHoverTargetId, setSwapHoverTargetId] = useState<string | null>(null);
+
   const { nodes: initialNodes, edges: initialEdges } = graphToFlow(
     graph,
     onUpdateParam,
     onRemoveNode,
+    onSwapWithParent,
+    onSwapWithChild,
+    setSwapHoverTargetId,
     selectedNodeId,
   );
 
@@ -158,10 +194,16 @@ export function PipelineFlowEditor({
   useEffect(() => {
     if (prevGraphRef.current === graph) return;
     prevGraphRef.current = graph;
-    const { nodes, edges } = graphToFlow(graph, onUpdateParam, onRemoveNode, selectedNodeId);
+    const { nodes, edges } = graphToFlow(graph, onUpdateParam, onRemoveNode, onSwapWithParent, onSwapWithChild, setSwapHoverTargetId, selectedNodeId);
     setRFNodes(nodes);
     setRFEdges(edges);
-  }, [graph, onUpdateParam, onRemoveNode, selectedNodeId, setRFNodes, setRFEdges]);
+  }, [graph, onUpdateParam, onRemoveNode, onSwapWithParent, onSwapWithChild, setSwapHoverTargetId, selectedNodeId, setRFNodes, setRFEdges]);
+
+  useEffect(() => {
+    setRFNodes((prev) =>
+      prev.map((n) => ({ ...n, data: { ...n.data, swapHighlighted: n.id === swapHoverTargetId } })),
+    );
+  }, [swapHoverTargetId, setRFNodes]);
 
   // Local leaf hover (from canvas); combined with hoveredOutputId (from right panel).
   const [hoveredLocalLeafId, setHoveredLocalLeafId] = useState<string | null>(null);
@@ -203,10 +245,23 @@ export function PipelineFlowEditor({
         // Sync node removal to graph (e.g. Delete key) — input node cannot be removed.
         if (change.type === "remove" && change.id !== INPUT_NODE_ID) {
           if (change.id === selectedNodeId) onSelectNode(null);
-          const newGraph = flowToGraph(
-            rfNodes.filter((n) => n.id !== change.id),
-            rfEdges,
+          const removedId = change.id;
+          const inEdge = rfEdges.find((e) => e.target === removedId);
+          const outEdges = rfEdges.filter((e) => e.source === removedId);
+          const bridged = rfEdges.filter(
+            (e) => e.source !== removedId && e.target !== removedId,
           );
+          if (inEdge) {
+            for (const outEdge of outEdges) {
+              bridged.push({
+                id: `e-${inEdge.source}-${outEdge.target}`,
+                source: inEdge.source,
+                target: outEdge.target,
+              });
+            }
+          }
+          setRFEdges(bridged);
+          const newGraph = flowToGraph(rfNodes.filter((n) => n.id !== removedId), bridged);
           prevGraphRef.current = newGraph;
           onGraphChange(newGraph);
           break;

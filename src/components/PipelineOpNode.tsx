@@ -10,7 +10,15 @@ export interface OpNodeData extends Record<string, unknown> {
   params: Record<string, string>;
   onUpdateParam: (key: string, value: string) => void;
   onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+  onSwapHover: (nodeId: string | null) => void;
+  swapUpTargetId?: string;
+  swapDownTargetId?: string;
   highlighted?: boolean;
+  swapHighlighted?: boolean;
 }
 
 export function PipelineOpNode({ id, data, selected }: NodeProps) {
@@ -18,10 +26,12 @@ export function PipelineOpNode({ id, data, selected }: NodeProps) {
   const op = OPERATIONS.find((o) => o.id === nodeData.operationId);
   if (!op) return null;
 
+  const isHighlighted = nodeData.highlighted || nodeData.swapHighlighted;
+
   return (
     <div
       style={{
-        background: nodeData.highlighted ? "var(--accent-alpha-weak)" : "var(--background-page)",
+        background: isHighlighted ? "var(--accent-alpha-weak)" : "var(--background-page)",
         border: `2px solid ${selected ? "var(--brand-solid-strong)" : "var(--neutral-alpha-medium)"}`,
         transition: "background 0.15s",
         borderRadius: "var(--radius-m)",
@@ -36,13 +46,43 @@ export function PipelineOpNode({ id, data, selected }: NodeProps) {
           <Text variant="label-strong-s" title={op.description}>
             {op.name}
           </Text>
-          <IconButton
-            icon="close"
-            size="s"
-            variant="ghost"
-            tooltip="Remove"
-            onClick={nodeData.onRemove}
-          />
+          <Row gap="2">
+            {nodeData.canMoveUp && (
+              <span
+                onMouseEnter={() => nodeData.onSwapHover(nodeData.swapUpTargetId ?? null)}
+                onMouseLeave={() => nodeData.onSwapHover(null)}
+              >
+                <IconButton
+                  icon="chevronUp"
+                  size="s"
+                  variant="ghost"
+                  tooltip="Move earlier"
+                  onClick={nodeData.onMoveUp}
+                />
+              </span>
+            )}
+            {nodeData.canMoveDown && (
+              <span
+                onMouseEnter={() => nodeData.onSwapHover(nodeData.swapDownTargetId ?? null)}
+                onMouseLeave={() => nodeData.onSwapHover(null)}
+              >
+                <IconButton
+                  icon="chevronDown"
+                  size="s"
+                  variant="ghost"
+                  tooltip="Move later"
+                  onClick={nodeData.onMoveDown}
+                />
+              </span>
+            )}
+            <IconButton
+              icon="close"
+              size="s"
+              variant="ghost"
+              tooltip="Remove"
+              onClick={nodeData.onRemove}
+            />
+          </Row>
         </Row>
 
         {op.params?.map((param) => (

@@ -142,16 +142,18 @@ export function usePipeline() {
     if (selectedNodeId === instanceId) setSelectedNodeId(null);
     setGraph((prev) => {
       const inEdge = prev.edges.find((e) => e.target === instanceId);
-      const outEdge = prev.edges.find((e) => e.source === instanceId);
+      const outEdges = prev.edges.filter((e) => e.source === instanceId);
       const remaining = prev.edges.filter(
         (e) => e.source !== instanceId && e.target !== instanceId,
       );
-      if (inEdge && outEdge) {
-        remaining.push({
-          id: `e-${inEdge.source}-${outEdge.target}`,
-          source: inEdge.source,
-          target: outEdge.target,
-        });
+      if (inEdge) {
+        for (const outEdge of outEdges) {
+          remaining.push({
+            id: `e-${inEdge.source}-${outEdge.target}`,
+            source: inEdge.source,
+            target: outEdge.target,
+          });
+        }
       }
       return {
         nodes: prev.nodes.filter((n) => n.id !== instanceId),
@@ -209,6 +211,42 @@ export function usePipeline() {
     persist(savedPipelines.filter((s) => s.id !== id));
   }
 
+  function swapWithParent(nodeId: string) {
+    setGraph((prev) => {
+      const parentEdge = prev.edges.find((e) => e.target === nodeId);
+      if (!parentEdge || parentEdge.source === INPUT_NODE_ID) return prev;
+      const parentId = parentEdge.source;
+      const a = prev.nodes.find((n) => n.id === nodeId)!;
+      const b = prev.nodes.find((n) => n.id === parentId)!;
+      return {
+        ...prev,
+        nodes: prev.nodes.map((n) => {
+          if (n.id === nodeId) return { ...n, operationId: b.operationId, params: b.params };
+          if (n.id === parentId) return { ...n, operationId: a.operationId, params: a.params };
+          return n;
+        }),
+      };
+    });
+  }
+
+  function swapWithChild(nodeId: string) {
+    setGraph((prev) => {
+      const childEdge = prev.edges.find((e) => e.source === nodeId);
+      if (!childEdge) return prev;
+      const childId = childEdge.target;
+      const a = prev.nodes.find((n) => n.id === nodeId)!;
+      const b = prev.nodes.find((n) => n.id === childId)!;
+      return {
+        ...prev,
+        nodes: prev.nodes.map((n) => {
+          if (n.id === nodeId) return { ...n, operationId: b.operationId, params: b.params };
+          if (n.id === childId) return { ...n, operationId: a.operationId, params: a.params };
+          return n;
+        }),
+      };
+    });
+  }
+
   function reset() {
     setGraph({ nodes: [INITIAL_INPUT_NODE], edges: [] });
     setPipelineName("");
@@ -238,6 +276,8 @@ export function usePipeline() {
     savePipeline,
     loadPipeline,
     deleteSavedPipeline,
+    swapWithParent,
+    swapWithChild,
     reset,
   };
 }

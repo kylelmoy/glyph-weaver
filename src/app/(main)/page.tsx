@@ -66,6 +66,8 @@ export default function Home() {
     addOperation,
     updateParam,
     removeOperation,
+    swapWithParent,
+    swapWithChild,
     savePipeline,
     loadPipeline,
     deleteSavedPipeline,
@@ -380,6 +382,8 @@ export default function Home() {
             onGraphChange={setGraph}
             onUpdateParam={handleUpdateParam}
             onRemoveNode={handleRemoveNode}
+            onSwapWithParent={swapWithParent}
+            onSwapWithChild={swapWithChild}
             selectedNodeId={selectedNodeId}
             onSelectNode={setSelectedNodeId}
             onHoverLeafNode={setHoveredLeafId}
