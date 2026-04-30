@@ -17,10 +17,10 @@ export function PipelineInputNode({ data, selected }: NodeProps) {
         transition: "background 0.15s",
       }}
     >
-      <Column gap="2">
-        <Text variant="label-strong-s">→ Input</Text>
+      <Column gap="xs" padding="s" align="center">
+        <Text variant="label-strong-s">Input</Text>
       </Column>
-      <Handle type="source" position={Position.Bottom} />
+      <Handle type="source" position={Position.Bottom} isConnectableStart={false} />
     </div>
   );
 }
