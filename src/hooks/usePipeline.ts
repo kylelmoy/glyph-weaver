@@ -1,5 +1,14 @@
 "use client";
 
+/**
+ * usePipeline — single source of truth for the active pipeline graph.
+ *
+ * Manages graph state (nodes, edges), parameter editing, node operations
+ * (add, remove, reorder), and two-tier persistence:
+ *  - Auto-save: the active graph is written to localStorage on every change.
+ *  - Named saves: user-titled snapshots stored in a separate localStorage key.
+ */
+
 import type {
   PipelineEdge,
   PipelineGraph,
@@ -7,11 +16,16 @@ import type {
   SavedPipelineV2,
 } from "@/lib/pipelineGraph";
 import { INPUT_NODE_ID } from "@/lib/pipelineGraph";
-import { OPERATIONS } from "@/lib/textOperations";
+import { OPERATIONS } from "@/lib/operations";
 import { useEffect, useRef, useState } from "react";
 
 const STORAGE_KEY = "glyph-weaver-pipelines";
 const SESSION_KEY = "glyph-weaver-session";
+
+// Vertical canvas spacing when placing a new node below its parent.
+// INPUT_CHILD_Y_OFFSET is larger to account for the input node's textarea height.
+const INPUT_CHILD_Y_OFFSET = 300;
+const OP_CHILD_Y_OFFSET = 130;
 
 const INITIAL_INPUT_NODE: PipelineNode = {
   id: INPUT_NODE_ID,
@@ -20,6 +34,11 @@ const INITIAL_INPUT_NODE: PipelineNode = {
   position: { x: 0, y: 0 },
 };
 
+/**
+ * Ensure the graph always contains the reserved input node.
+ * If it is missing (e.g. after loading a legacy save), it is prepended and
+ * connected to all existing root nodes (nodes with no incoming edges).
+ */
 function ensureInputNode(g: PipelineGraph): PipelineGraph {
   if (g.nodes.some((n) => n.id === INPUT_NODE_ID)) return g;
   const targetIds = new Set(g.edges.map((e) => e.target));
@@ -37,6 +56,11 @@ function ensureInputNode(g: PipelineGraph): PipelineGraph {
   };
 }
 
+/**
+ * Determine the next numeric node ID to use, derived from the graph.
+ * Scans existing numeric IDs and returns max + 1, so IDs never collide
+ * even after loading a saved pipeline with pre-existing nodes.
+ */
 function computeNextId(g: PipelineGraph): number {
   return (
     g.nodes.reduce((max, node) => {
@@ -57,16 +81,19 @@ export function usePipeline() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const nextId = useRef(0);
-  // Counts how many times the graph auto-save effect has fired; skip the first
-  // to avoid overwriting a restored session with the default initial graph.
+  // Counts how many times the auto-save effect has fired.
+  // We skip the very first firing to avoid overwriting a restored session with
+  // the bare initial graph that exists before localStorage has been read.
   const sessionSaveCount = useRef(0);
 
-  // Load saved pipelines list and restore the active session graph.
+  // Load saved pipelines list and restore the active session graph on mount.
   useEffect(() => {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) setSavedPipelines(JSON.parse(stored) as SavedPipelineV2[]);
-    } catch { }
+    } catch {
+      /* localStorage unavailable (e.g. private browsing or quota exceeded) */
+    }
 
     try {
       const stored = localStorage.getItem(SESSION_KEY);
@@ -76,23 +103,36 @@ export function usePipeline() {
         setGraph(g);
         nextId.current = computeNextId(g);
       }
-    } catch { }
+    } catch {
+      /* localStorage unavailable */
+    }
   }, []);
 
-  // Auto-save the active graph to session storage on every change.
+  // Auto-save the active graph to localStorage on every change.
   useEffect(() => {
     sessionSaveCount.current++;
-    if (sessionSaveCount.current === 1) return; // skip initial render
+    if (sessionSaveCount.current === 1) return; // skip initial render (see comment above)
     try {
       localStorage.setItem(SESSION_KEY, JSON.stringify({ graph }));
-    } catch { }
+    } catch {
+      /* localStorage unavailable or quota exceeded */
+    }
   }, [graph]);
 
+  /** Write the current saved-pipeline list to state and localStorage. */
   function persist(updated: SavedPipelineV2[]) {
     setSavedPipelines(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   }
 
+  /**
+   * Add a new operation node to the graph, connected from the currently
+   * selected node (or the input node if nothing is selected).
+   *
+   * @param operationId - ID of the operation from the OPERATIONS registry.
+   * @param findFreePosition - Optional callback from the React Flow canvas that
+   *   nudges the candidate position until it no longer overlaps existing nodes.
+   */
   function addOperation(
     operationId: string,
     findFreePosition?: (pos: { x: number; y: number }) => { x: number; y: number },
@@ -103,6 +143,9 @@ export function usePipeline() {
 
     const newId = String(nextId.current++);
     const parentId = selectedNodeId ?? INPUT_NODE_ID;
+
+    // Compute the default position using the current graph state (not inside
+    // setGraph) so findFreePosition can be called synchronously before the update.
     const parent =
       graph.nodes.find((n) => n.id === parentId) ??
       graph.nodes.find((n) => n.id === INPUT_NODE_ID)!;
@@ -110,7 +153,7 @@ export function usePipeline() {
     const isInputParent = parent.id === INPUT_NODE_ID;
     let position = {
       x: parent.position.x,
-      y: parent.position.y + (isInputParent ? 300 : 130),
+      y: parent.position.y + (isInputParent ? INPUT_CHILD_Y_OFFSET : OP_CHILD_Y_OFFSET),
     };
 
     if (findFreePosition) {
@@ -124,7 +167,6 @@ export function usePipeline() {
         source: parent.id,
         target: newId,
       };
-
       return {
         nodes: [...prev.nodes, newNode],
         edges: [...prev.edges, newEdge],
@@ -134,6 +176,7 @@ export function usePipeline() {
     setSelectedNodeId(newId);
   }
 
+  /** Update a single parameter value on an existing operation node. */
   function updateParam(instanceId: string, key: string, value: string) {
     setGraph((prev) => ({
       ...prev,
@@ -143,6 +186,10 @@ export function usePipeline() {
     }));
   }
 
+  /**
+   * Remove an operation node from the graph, re-bridging its incoming edge
+   * to each of its outgoing edges so downstream nodes stay connected.
+   */
   function removeOperation(instanceId: string) {
     if (instanceId === INPUT_NODE_ID) return;
     if (selectedNodeId === instanceId) setSelectedNodeId(null);
@@ -168,55 +215,11 @@ export function usePipeline() {
     });
   }
 
-  function updateNodePosition(nodeId: string, position: { x: number; y: number }) {
-    setGraph((prev) => ({
-      ...prev,
-      nodes: prev.nodes.map((n) => (n.id === nodeId ? { ...n, position } : n)),
-    }));
-  }
-
-  function addGraphEdge(source: string, target: string) {
-    const id = `e-${source}-${target}-${Date.now()}`;
-    setGraph((prev) => ({
-      ...prev,
-      edges: [...prev.edges, { id, source, target }],
-    }));
-  }
-
-  function removeGraphEdge(edgeId: string) {
-    setGraph((prev) => ({
-      ...prev,
-      edges: prev.edges.filter((e) => e.id !== edgeId),
-    }));
-  }
-
-  function savePipeline() {
-    const name = pipelineName.trim() || "Untitled";
-    const entry: SavedPipelineV2 = {
-      id: String(Date.now()),
-      name,
-      savedAt: Date.now(),
-      version: 2,
-      graph,
-    };
-    const idx = savedPipelines.findIndex((s) => s.name === name);
-    persist(
-      idx >= 0 ? savedPipelines.map((s, i) => (i === idx ? entry : s)) : [...savedPipelines, entry],
-    );
-  }
-
-  function loadPipeline(saved: SavedPipelineV2) {
-    setSelectedNodeId(null);
-    const g = ensureInputNode(saved.graph);
-    setGraph(g);
-    setPipelineName(saved.name);
-    nextId.current = computeNextId(g);
-  }
-
-  function deleteSavedPipeline(id: string) {
-    persist(savedPipelines.filter((s) => s.id !== id));
-  }
-
+  /**
+   * Swap the operation and parameters of a node with those of its parent,
+   * effectively moving the node one step earlier in the pipeline.
+   * Does nothing if the parent is the input node.
+   */
   function swapWithParent(nodeId: string) {
     setGraph((prev) => {
       const parentEdge = prev.edges.find((e) => e.target === nodeId);
@@ -235,6 +238,11 @@ export function usePipeline() {
     });
   }
 
+  /**
+   * Swap the operation and parameters of a node with those of its single child,
+   * effectively moving the node one step later in the pipeline.
+   * Does nothing if the node has no children or more than one child.
+   */
   function swapWithChild(nodeId: string) {
     setGraph((prev) => {
       const childEdge = prev.edges.find((e) => e.source === nodeId);
@@ -253,6 +261,40 @@ export function usePipeline() {
     });
   }
 
+  /**
+   * Save the current graph under `pipelineName`, overwriting any existing
+   * save with the same name. Falls back to "Untitled" if the name is blank.
+   */
+  function savePipeline() {
+    const name = pipelineName.trim() || "Untitled";
+    const entry: SavedPipelineV2 = {
+      id: String(Date.now()),
+      name,
+      savedAt: Date.now(),
+      version: 2,
+      graph,
+    };
+    const idx = savedPipelines.findIndex((s) => s.name === name);
+    persist(
+      idx >= 0 ? savedPipelines.map((s, i) => (i === idx ? entry : s)) : [...savedPipelines, entry],
+    );
+  }
+
+  /** Replace the active graph with a saved pipeline snapshot. */
+  function loadPipeline(saved: SavedPipelineV2) {
+    setSelectedNodeId(null);
+    const g = ensureInputNode(saved.graph);
+    setGraph(g);
+    setPipelineName(saved.name);
+    nextId.current = computeNextId(g);
+  }
+
+  /** Permanently delete a named save by ID. */
+  function deleteSavedPipeline(id: string) {
+    persist(savedPipelines.filter((s) => s.id !== id));
+  }
+
+  /** Reset the active graph to its initial state and clear the session. */
   function reset() {
     setGraph({ nodes: [INITIAL_INPUT_NODE], edges: [] });
     setPipelineName("");
@@ -260,7 +302,9 @@ export function usePipeline() {
     nextId.current = 0;
     try {
       localStorage.removeItem(SESSION_KEY);
-    } catch { }
+    } catch {
+      /* localStorage unavailable */
+    }
   }
 
   return {
@@ -276,9 +320,6 @@ export function usePipeline() {
     addOperation,
     updateParam,
     removeOperation,
-    updateNodePosition,
-    addGraphEdge,
-    removeGraphEdge,
     savePipeline,
     loadPipeline,
     deleteSavedPipeline,

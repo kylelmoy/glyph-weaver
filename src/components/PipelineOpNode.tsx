@@ -1,6 +1,6 @@
 "use client";
 
-import { OPERATIONS } from "@/lib/textOperations";
+import { OPERATIONS } from "@/lib/operations";
 import { Column, IconButton, Input, Row, Text } from "@once-ui-system/core";
 import { Handle, Position } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
@@ -21,6 +21,10 @@ export interface OpNodeData extends Record<string, unknown> {
   swapHighlighted?: boolean;
 }
 
+/**
+ * React Flow node for a single pipeline operation — shows the operation name,
+ * configurable parameter inputs, and move-up / move-down / remove controls.
+ */
 export function PipelineOpNode({ id, data, selected }: NodeProps) {
   const nodeData = data as OpNodeData;
   const op = OPERATIONS.find((o) => o.id === nodeData.operationId);

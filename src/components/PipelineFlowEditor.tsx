@@ -25,14 +25,19 @@ import { PipelineOpNode } from "@/components/PipelineOpNode";
 import type { OpNodeData } from "@/components/PipelineOpNode";
 import type { PipelineGraph } from "@/lib/pipelineGraph";
 import { INPUT_NODE_ID } from "@/lib/pipelineGraph";
-import { OPERATIONS } from "@/lib/textOperations";
+import { OPERATIONS } from "@/lib/operations";
 import { useTheme } from "@once-ui-system/core";
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 
-// Define node types outside the component so React Flow doesn't remount nodes on re-render.
+// Node type map is defined outside the component so React Flow receives a stable
+// reference and does not remount nodes on every parent re-render.
 const NODE_TYPES = { op: PipelineOpNode, "pipeline-input": PipelineInputNode };
 
-/** Walk backwards from a leaf to collect every ancestor node ID and edge ID. */
+/**
+ * Walk the edge list backwards from `leafId`, collecting every ancestor node ID
+ * and the connecting edge ID along the path to the root. Used to highlight the
+ * active pipeline path when a leaf node is hovered.
+ */
 function getAncestorPath(
   leafId: string,
   edges: Edge[],
@@ -54,6 +59,15 @@ export type OpNode = Node<OpNodeData, "op">;
 
 // ── Conversion helpers ────────────────────────────────────────────────────────
 
+/**
+ * Convert a `PipelineGraph` to the node/edge format React Flow expects.
+ *
+ * Callbacks (onUpdateParam, onRemoveNode, etc.) are attached to node data here
+ * because React Flow node components receive data as a plain prop and cannot
+ * directly close over parent-component state.
+ *
+ * This is a one-way conversion — call `flowToGraph` to go the other direction.
+ */
 function graphToFlow(
   graph: PipelineGraph,
   onUpdateParam: (nodeId: string, key: string, value: string) => void,
@@ -125,6 +139,10 @@ function graphToFlow(
   return { nodes, edges };
 }
 
+/**
+ * Strip React Flow–specific fields from nodes/edges and return a plain
+ * `PipelineGraph` suitable for persistence and pipeline execution.
+ */
 function flowToGraph(rfNodes: Node[], rfEdges: Edge[]): PipelineGraph {
   return {
     nodes: rfNodes.map((n) => ({
@@ -146,10 +164,21 @@ function flowToGraph(rfNodes: Node[], rfEdges: Edge[]): PipelineGraph {
 type Position = { x: number; y: number };
 type FindFreePosition = (pos: Position) => Position;
 
-const NODE_W = 280;
-const NODE_H = 120;
-const NUDGE_STEP = NODE_W + 5;
+// Estimated op-node dimensions used for intersection checking (see PipelineOpNode styles).
+const NODE_W = 280; // matches maxWidth
+const NODE_H = 120; // approximates height with one param input
 
+const NUDGE_STEP = NODE_H + 20; // vertical step when searching for a free position
+
+/**
+ * A render-null component that lives inside `<ReactFlow>` (giving it access to
+ * the ReactFlow context) and writes a `findFreePosition` helper into the
+ * provided ref on every render.
+ *
+ * This pattern is necessary because `useReactFlow` can only be called inside a
+ * descendant of the `ReactFlow` provider, but the position-finding logic needs
+ * to run in the parent before a new node is added to the graph.
+ */
 function IntersectionHelper({
   findFreePositionRef,
 }: {
@@ -175,6 +204,15 @@ function IntersectionHelper({
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+/**
+ * Props for PipelineFlowEditor.
+ *
+ * The component maintains its own React Flow state (rfNodes/rfEdges) that
+ * mirrors the authoritative `graph` prop. Changes originating inside React
+ * Flow (drags, deletions, new connections) are propagated out via `onGraphChange`.
+ * Changes originating outside (adding an operation from the palette) arrive via
+ * the `graph` prop and are synced in using a `useEffect`.
+ */
 interface PipelineFlowEditorProps {
   graph: PipelineGraph;
   onGraphChange: (graph: PipelineGraph) => void;
@@ -191,6 +229,14 @@ interface PipelineFlowEditorProps {
   findFreePositionRef: React.MutableRefObject<FindFreePosition | undefined>;
 }
 
+/**
+ * Interactive React Flow canvas for the pipeline graph.
+ *
+ * Maintains a local copy of nodes/edges in React Flow's format and
+ * bidirectionally syncs with the authoritative `PipelineGraph` managed by
+ * `usePipeline`. Handles drag-to-reposition, Delete-key removal, manual edge
+ * connections, leaf-node hover highlighting, and swap-target highlighting.
+ */
 export function PipelineFlowEditor({
   graph,
   onGraphChange,
@@ -231,17 +277,39 @@ export function PipelineFlowEditor({
   const [rfNodes, setRFNodes, onRFNodesChange] = useNodesState<Node>(initialNodes);
   const [rfEdges, setRFEdges, onRFEdgesChange] = useEdgesState(initialEdges);
 
-  // Track the last graph that RF state was synced FROM to avoid feedback loops.
+  // Tracks the last graph we synced FROM, so the graph→RF sync effect can
+  // distinguish external prop changes from changes it wrote itself (which would
+  // otherwise trigger a redundant rebuild of the entire RF node/edge list).
   const prevGraphRef = useRef(graph);
 
   // Sync graph → RF when graph changes externally (e.g., palette adds a node).
   useEffect(() => {
     if (prevGraphRef.current === graph) return;
     prevGraphRef.current = graph;
-    const { nodes, edges } = graphToFlow(graph, onUpdateParam, onRemoveNode, onSwapWithParent, onSwapWithChild, setSwapHoverTargetId, inputText, onInputChange, selectedNodeId);
+    const { nodes, edges } = graphToFlow(
+      graph,
+      onUpdateParam,
+      onRemoveNode,
+      onSwapWithParent,
+      onSwapWithChild,
+      setSwapHoverTargetId,
+      inputText,
+      onInputChange,
+      selectedNodeId,
+    );
     setRFNodes(nodes);
     setRFEdges(edges);
-  }, [graph, onUpdateParam, onRemoveNode, onSwapWithParent, onSwapWithChild, setSwapHoverTargetId, selectedNodeId, setRFNodes, setRFEdges]);
+  }, [
+    graph,
+    onUpdateParam,
+    onRemoveNode,
+    onSwapWithParent,
+    onSwapWithChild,
+    setSwapHoverTargetId,
+    selectedNodeId,
+    setRFNodes,
+    setRFEdges,
+  ]);
 
   // Update only the input node's data when inputText changes, without rebuilding all nodes.
   useEffect(() => {
@@ -276,7 +344,7 @@ export function PipelineFlowEditor({
     setRFEdges((prev) =>
       prev.map((e) => ({
         ...e,
-        animated: edgeIds.has(e.id)
+        animated: edgeIds.has(e.id),
       })),
     );
   }, [activeLeafId, graph.edges, setRFNodes, setRFEdges]);
@@ -301,9 +369,7 @@ export function PipelineFlowEditor({
           const removedId = change.id;
           const inEdge = rfEdges.find((e) => e.target === removedId);
           const outEdges = rfEdges.filter((e) => e.source === removedId);
-          const bridged = rfEdges.filter(
-            (e) => e.source !== removedId && e.target !== removedId,
-          );
+          const bridged = rfEdges.filter((e) => e.source !== removedId && e.target !== removedId);
           if (inEdge) {
             for (const outEdge of outEdges) {
               bridged.push({
@@ -314,7 +380,10 @@ export function PipelineFlowEditor({
             }
           }
           setRFEdges(bridged);
-          const newGraph = flowToGraph(rfNodes.filter((n) => n.id !== removedId), bridged);
+          const newGraph = flowToGraph(
+            rfNodes.filter((n) => n.id !== removedId),
+            bridged,
+          );
           prevGraphRef.current = newGraph;
           onGraphChange(newGraph);
           break;
@@ -352,7 +421,10 @@ export function PipelineFlowEditor({
       onRFEdgesChange(changes);
       for (const change of changes) {
         if (change.type === "remove") {
-          const newGraph = flowToGraph(rfNodes, rfEdges.filter((e) => e.id !== change.id));
+          const newGraph = flowToGraph(
+            rfNodes,
+            rfEdges.filter((e) => e.id !== change.id),
+          );
           prevGraphRef.current = newGraph;
           onGraphChange(newGraph);
           break;

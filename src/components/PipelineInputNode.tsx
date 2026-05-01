@@ -11,6 +11,10 @@ export interface InputNodeData extends Record<string, unknown> {
   highlighted?: boolean;
 }
 
+/**
+ * React Flow node for the pipeline's input — displays a textarea where the
+ * user enters the source text, with a collapse toggle to save canvas space.
+ */
 export function PipelineInputNode({ data, selected }: NodeProps) {
   const nodeData = data as InputNodeData;
   const [collapsed, setCollapsed] = useState(false);

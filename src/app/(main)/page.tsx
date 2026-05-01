@@ -1,12 +1,20 @@
 "use client";
 
+/**
+ * Main page — three-column layout:
+ *  Left:   Operations palette (search, categorised accordion, save/load)
+ *  Centre: React Flow pipeline canvas
+ *  Right:  Output panel (per-leaf text areas)
+ */
+
 import { Logo } from "@/components/Logo";
 import { PipelineFlowEditor } from "@/components/PipelineFlowEditor";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { usePipeline } from "@/hooks/usePipeline";
 import { INPUT_NODE_ID, processGraph } from "@/lib/pipelineGraph";
 import type { GraphOutput } from "@/lib/pipelineGraph";
-import { OPERATIONS, OPERATION_CATEGORIES } from "@/lib/textOperations";
+import { OPERATIONS, OPERATION_CATEGORIES } from "@/lib/operations";
+import type { OperationDefinition } from "@/lib/operations";
 import {
   Button,
   Column,
@@ -21,6 +29,57 @@ import {
 } from "@once-ui-system/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+// ── Operations palette helpers ────────────────────────────────────────────────
+
+interface CategorySectionProps {
+  name: string;
+  ops: OperationDefinition[];
+  isExpanded: boolean;
+  onToggle: () => void;
+  onAdd: (operationId: string) => void;
+}
+
+/** Collapsible accordion section used for both named categories and "Recent". */
+function CategorySection({ name, ops, isExpanded, onToggle, onAdd }: CategorySectionProps) {
+  return (
+    <Column gap="4">
+      <Row
+        fillWidth
+        vertical="center"
+        horizontal="between"
+        onClick={onToggle}
+        style={{ cursor: "pointer" }}
+      >
+        <Heading as="h5">{name}</Heading>
+        <Icon
+          name={isExpanded ? "chevronUp" : "chevronDown"}
+          size="xs"
+          onBackground="neutral-weak"
+        />
+      </Row>
+      {isExpanded && (
+        <Column gap="4">
+          {ops.map((op) => (
+            <Button
+              key={op.id}
+              fillWidth
+              size="s"
+              variant="secondary"
+              suffixIcon="plus"
+              onClick={() => onAdd(op.id)}
+              title={op.description}
+            >
+              {op.name}
+            </Button>
+          ))}
+        </Column>
+      )}
+    </Column>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
 export default function Home() {
   const [inputText, setInputText] = useState("");
   const inputSaveCount = useRef(0);
@@ -29,7 +88,9 @@ export default function Home() {
     try {
       const stored = localStorage.getItem("glyph-weaver-session-input");
       if (stored !== null) setInputText(stored);
-    } catch { }
+    } catch {
+      /* localStorage unavailable */
+    }
   }, []);
 
   useEffect(() => {
@@ -37,7 +98,9 @@ export default function Home() {
     if (inputSaveCount.current === 1) return;
     try {
       localStorage.setItem("glyph-weaver-session-input", inputText);
-    } catch { }
+    } catch {
+      /* localStorage unavailable or quota exceeded */
+    }
   }, [inputText]);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     () => new Set(["Recent", "Custom", "Sorting", "Filtering"]),
@@ -84,7 +147,11 @@ export default function Home() {
     [removeOperation],
   );
 
-  const findFreePositionRef = useRef<((pos: { x: number; y: number }) => { x: number; y: number }) | undefined>(undefined);
+  // Populated by IntersectionHelper (rendered inside the React Flow canvas), which
+  // uses the ReactFlow context to check candidate positions against existing nodes.
+  const findFreePositionRef = useRef<
+    ((pos: { x: number; y: number }) => { x: number; y: number }) | undefined
+  >(undefined);
 
   const addOperationAndTrack = (operationId: string) => {
     addOperation(operationId, findFreePositionRef.current);
@@ -100,7 +167,7 @@ export default function Home() {
     setInputText("");
     try {
       localStorage.removeItem("glyph-weaver-session-input");
-    } catch { }
+    } catch {}
   };
 
   const [hoveredLeafId, setHoveredLeafId] = useState<string | null>(null);
@@ -109,10 +176,10 @@ export default function Home() {
   const searchQuery = operationSearch.trim().toLowerCase();
   const filteredOps = searchQuery
     ? OPERATIONS.filter(
-      (op) =>
-        op.name.toLowerCase().includes(searchQuery) ||
-        op.description.toLowerCase().includes(searchQuery),
-    )
+        (op) =>
+          op.name.toLowerCase().includes(searchQuery) ||
+          op.description.toLowerCase().includes(searchQuery),
+      )
     : null;
 
   return (
@@ -144,7 +211,6 @@ export default function Home() {
 
       {/* ── 3-column body ── */}
       <Row fillWidth style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
-
         {/* ── Left: Operations palette ── */}
         <Column
           style={{
@@ -205,89 +271,29 @@ export default function Home() {
               )
             ) : (
               <>
-                {recentOperationIds.length > 0 &&
-                  (() => {
-                    const isExpanded = expandedCategories.has("Recent");
-                    return (
-                      <Column gap="4">
-                        <Row
-                          fillWidth
-                          vertical="center"
-                          horizontal="between"
-                          onClick={() => toggleCategory("Recent")}
-                          style={{ cursor: "pointer" }}
-                        >
-                          <Heading as="h5">Recent</Heading>
-                          <Icon
-                            name={isExpanded ? "chevronUp" : "chevronDown"}
-                            size="xs"
-                            onBackground="neutral-weak"
-                          />
-                        </Row>
-                        {isExpanded && (
-                          <Column gap="4">
-                            {recentOperationIds.map((id) => {
-                              const op = OPERATIONS.find((o) => o.id === id);
-                              if (!op) return null;
-                              return (
-                                <Button
-                                  key={op.id}
-                                  fillWidth
-                                  size="s"
-                                  variant="secondary"
-                                  suffixIcon="plus"
-                                  onClick={() => addOperationAndTrack(op.id)}
-                                  title={op.description}
-                                >
-                                  {op.name}
-                                </Button>
-                              );
-                            })}
-                          </Column>
-                        )}
-                      </Column>
-                    );
-                  })()}
+                {recentOperationIds.length > 0 && (
+                  <CategorySection
+                    name="Recent"
+                    ops={recentOperationIds.flatMap((id) => {
+                      const op = OPERATIONS.find((o) => o.id === id);
+                      return op ? [op] : [];
+                    })}
+                    isExpanded={expandedCategories.has("Recent")}
+                    onToggle={() => toggleCategory("Recent")}
+                    onAdd={addOperationAndTrack}
+                  />
+                )}
 
-                {OPERATION_CATEGORIES.map((category) => {
-                  const ops = OPERATIONS.filter((op) => op.category === category);
-                  const isExpanded = expandedCategories.has(category);
-                  return (
-                    <Column key={category} gap="4">
-                      <Row
-                        fillWidth
-                        vertical="center"
-                        horizontal="between"
-                        onClick={() => toggleCategory(category)}
-                        style={{ cursor: "pointer" }}
-                      >
-                        <Heading as="h5">{category}</Heading>
-                        <Icon
-                          name={isExpanded ? "chevronUp" : "chevronDown"}
-                          size="xs"
-                          onBackground="neutral-weak"
-                        />
-                      </Row>
-                      {isExpanded && (
-                        <Column gap="4">
-                          {ops.map((op) => (
-                            <Button
-                              key={op.id}
-                              fillWidth
-                              size="s"
-                              variant="secondary"
-                              suffixIcon="plus"
-                              onClick={() => addOperationAndTrack(op.id)}
-                              title={op.description}
-                            >
-                              {op.name}
-                            </Button>
-                          ))}
-                        </Column>
-                      )}
-                    </Column>
-                  );
-                })}
+                {OPERATION_CATEGORIES.map((category) => (
+                  <CategorySection
+                    key={category}
+                    name={category}
+                    ops={OPERATIONS.filter((op) => op.category === category)}
+                    isExpanded={expandedCategories.has(category)}
+                    onToggle={() => toggleCategory(category)}
+                    onAdd={addOperationAndTrack}
+                  />
+                ))}
               </>
             )}
           </Column>
@@ -346,7 +352,11 @@ export default function Home() {
                         <Column gap="2" style={{ minWidth: 0 }}>
                           <Text
                             variant="label-strong-s"
-                            style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                            style={{
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                            }}
                           >
                             {saved.name}
                           </Text>
@@ -420,7 +430,8 @@ export default function Home() {
                     lines={8}
                     resize="vertical"
                     style={{
-                      background: hoveredLeafId === outputs[0].id ? "var(--accent-alpha-weak)" : undefined,
+                      background:
+                        hoveredLeafId === outputs[0].id ? "var(--accent-alpha-weak)" : undefined,
                       transition: "background 0.15s",
                     }}
                     onMouseEnter={() => setHoveredOutputId(outputs[0].id)}
@@ -444,15 +455,16 @@ export default function Home() {
                       resize="vertical"
                       lines={4}
                       style={{
-                        background: hoveredLeafId === out.id ? "var(--accent-alpha-weak)" : undefined,
+                        background:
+                          hoveredLeafId === out.id ? "var(--accent-alpha-weak)" : undefined,
                         transition: "background 0.15s",
                       }}
                       onMouseEnter={() => setHoveredOutputId(out.id)}
                       onMouseLeave={() => setHoveredOutputId(null)}
                     />
                     <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
-                      {out.text.length} chars ·{" "}
-                      {out.text === "" ? 0 : out.text.split("\n").length} lines
+                      {out.text.length} chars · {out.text === "" ? 0 : out.text.split("\n").length}{" "}
+                      lines
                     </Text>
                   </Column>
                 ))

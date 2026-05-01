@@ -3,19 +3,26 @@
 import { useEffect, useState } from "react";
 import { ToggleButton, useTheme } from "@once-ui-system/core";
 
+/**
+ * Button that toggles between light and dark colour modes.
+ *
+ * `displayTheme` is initialised to "light" to match the server render (which
+ * has no knowledge of the user's saved preference). The effect corrects it to
+ * the real theme after hydration, avoiding a server/client HTML mismatch.
+ */
 export function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const [currentTheme, setCurrentTheme] = useState("light");
+  const [displayTheme, setDisplayTheme] = useState<"light" | "dark">("light");
 
   useEffect(() => {
-    setCurrentTheme(document.documentElement.getAttribute("data-theme") || "light");
+    setDisplayTheme(theme === "dark" ? "dark" : "light");
   }, [theme]);
 
-  const nextTheme = currentTheme === "light" ? "dark" : "light";
+  const nextTheme = displayTheme === "light" ? "dark" : "light";
 
   return (
     <ToggleButton
-      prefixIcon={currentTheme === "dark" ? "light" : "dark"}
+      prefixIcon={displayTheme === "dark" ? "light" : "dark"}
       onClick={() => setTheme(nextTheme)}
       aria-label={`Switch to ${nextTheme} mode`}
     />
