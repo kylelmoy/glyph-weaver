@@ -22,7 +22,6 @@ export function PipelineInputNode({ data, selected }: NodeProps) {
         border: `2px solid ${selected ? "var(--accent-solid-strong)" : "var(--neutral-alpha-medium)"}`,
         borderRadius: "var(--radius-m)",
         minWidth: 240,
-        maxWidth: 320,
         transition: "background 0.15s",
       }}
     >
@@ -46,7 +45,7 @@ export function PipelineInputNode({ data, selected }: NodeProps) {
               value={nodeData.inputText}
               onChange={(e) => nodeData.onInputChange(e.target.value)}
               lines={5}
-              resize="vertical"
+              resize="both"
               className="nodrag nowheel"
             />
             <Text variant="body-default-xs" onBackground="neutral-weak" align="right">

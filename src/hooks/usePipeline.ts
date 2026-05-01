@@ -93,25 +93,31 @@ export function usePipeline() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
   }
 
-  function addOperation(operationId: string) {
+  function addOperation(
+    operationId: string,
+    findFreePosition?: (pos: { x: number; y: number }) => { x: number; y: number },
+  ) {
     const op = OPERATIONS.find((o) => o.id === operationId);
     const params: Record<string, string> = {};
     for (const p of op?.params ?? []) params[p.key] = "";
 
     const newId = String(nextId.current++);
     const parentId = selectedNodeId ?? INPUT_NODE_ID;
+    const parent =
+      graph.nodes.find((n) => n.id === parentId) ??
+      graph.nodes.find((n) => n.id === INPUT_NODE_ID)!;
+
+    const isInputParent = parent.id === INPUT_NODE_ID;
+    let position = {
+      x: parent.position.x,
+      y: parent.position.y + (isInputParent ? 300 : 130),
+    };
+
+    if (findFreePosition) {
+      position = findFreePosition(position);
+    }
 
     setGraph((prev) => {
-      const parent =
-        prev.nodes.find((n) => n.id === parentId) ??
-        prev.nodes.find((n) => n.id === INPUT_NODE_ID)!;
-
-      const isInputParent = parent.id === INPUT_NODE_ID;
-      const position = {
-        x: parent.position.x,
-        y: parent.position.y + (isInputParent ? 300 : 130),
-      };
-
       const newNode: PipelineNode = { id: newId, operationId, params, position };
       const newEdge: PipelineEdge = {
         id: `e-${parent.id}-${newId}`,

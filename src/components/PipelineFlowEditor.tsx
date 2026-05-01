@@ -7,6 +7,7 @@ import {
   addEdge,
   useEdgesState,
   useNodesState,
+  useReactFlow,
 } from "@xyflow/react";
 import type {
   Connection,
@@ -140,6 +141,38 @@ function flowToGraph(rfNodes: Node[], rfEdges: Edge[]): PipelineGraph {
   };
 }
 
+// ── Intersection helper ───────────────────────────────────────────────────────
+
+type Position = { x: number; y: number };
+type FindFreePosition = (pos: Position) => Position;
+
+const NODE_W = 280;
+const NODE_H = 120;
+const NUDGE_STEP = NODE_W + 5;
+
+function IntersectionHelper({
+  findFreePositionRef,
+}: {
+  findFreePositionRef: React.MutableRefObject<FindFreePosition | undefined>;
+}) {
+  const { getIntersectingNodes } = useReactFlow();
+
+  findFreePositionRef.current = (pos) => {
+    let candidate = { ...pos };
+    for (let i = 0; i < 30; i++) {
+      const hits = getIntersectingNodes(
+        { x: candidate.x, y: candidate.y, width: NODE_W, height: NODE_H },
+        true,
+      );
+      if (hits.length === 0) return candidate;
+      candidate = { ...candidate, x: candidate.x + NUDGE_STEP };
+    }
+    return candidate;
+  };
+
+  return null;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 interface PipelineFlowEditorProps {
@@ -155,6 +188,7 @@ interface PipelineFlowEditorProps {
   onSelectNode: (id: string | null) => void;
   onHoverLeafNode: (id: string | null) => void;
   hoveredOutputId: string | null;
+  findFreePositionRef: React.MutableRefObject<FindFreePosition | undefined>;
 }
 
 export function PipelineFlowEditor({
@@ -170,6 +204,7 @@ export function PipelineFlowEditor({
   onSelectNode,
   onHoverLeafNode,
   hoveredOutputId,
+  findFreePositionRef,
 }: PipelineFlowEditorProps) {
   const { theme } = useTheme();
   const [colorMode, setColorMode] = useState<"light" | "dark">("light");
@@ -369,6 +404,7 @@ export function PipelineFlowEditor({
       >
         <Background />
         <Controls />
+        <IntersectionHelper findFreePositionRef={findFreePositionRef} />
       </ReactFlow>
     </div>
   );

@@ -84,8 +84,10 @@ export default function Home() {
     [removeOperation],
   );
 
+  const findFreePositionRef = useRef<((pos: { x: number; y: number }) => { x: number; y: number }) | undefined>(undefined);
+
   const addOperationAndTrack = (operationId: string) => {
-    addOperation(operationId);
+    addOperation(operationId, findFreePositionRef.current);
     setRecentOperationIds((prev) =>
       [operationId, ...prev.filter((id) => id !== operationId)].slice(0, 6),
     );
@@ -390,6 +392,7 @@ export default function Home() {
             onSelectNode={setSelectedNodeId}
             onHoverLeafNode={setHoveredLeafId}
             hoveredOutputId={hoveredOutputId}
+            findFreePositionRef={findFreePositionRef}
           />
         </Column>
 
