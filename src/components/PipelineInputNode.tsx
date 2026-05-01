@@ -29,7 +29,7 @@ export function PipelineInputNode({ data, selected }: NodeProps) {
         <Row vertical="center" horizontal="between">
           <Text variant="label-strong-s">Input</Text>
           <IconButton
-            icon={collapsed ? "chevronDown" : "chevronUp"}
+            icon={collapsed ? "maximize" : "minimize"}
             size="s"
             variant="ghost"
             tooltip={collapsed ? "Expand" : "Collapse"}
