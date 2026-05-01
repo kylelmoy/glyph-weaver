@@ -384,6 +384,8 @@ export default function Home() {
             onRemoveNode={handleRemoveNode}
             onSwapWithParent={swapWithParent}
             onSwapWithChild={swapWithChild}
+            inputText={inputText}
+            onInputChange={setInputText}
             selectedNodeId={selectedNodeId}
             onSelectNode={setSelectedNodeId}
             onHoverLeafNode={setHoveredLeafId}
@@ -400,32 +402,12 @@ export default function Home() {
             overflow: "hidden",
           }}
         >
-          {/* Scrollable input / output */}
+          {/* Scrollable output */}
           <Column gap="m" padding="m" style={{ flex: 1, overflowY: "auto" }}>
             <Column gap="xs">
-              <Heading as="h3">
-                Input
-              </Heading>
-              <Textarea
-                id="input"
-                placeholder="Insert your text here..."
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                lines={8}
-                resize="vertical"
-              />
-              <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
-                {inputText.length} chars · {inputText === "" ? 0 : inputText.split("\n").length}{" "}
-                lines
+              <Text variant="label-default-xs" onBackground="neutral-weak">
+                {outputs.length > 1 ? `Outputs (${outputs.length})` : "Output"}
               </Text>
-            </Column>
-
-            <Line />
-
-            <Column gap="xs">
-              <Heading as="h3">
-                Output
-              </Heading>
               {outputs.length === 1 ? (
                 <>
                   <Textarea

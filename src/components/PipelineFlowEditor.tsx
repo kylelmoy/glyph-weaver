@@ -19,6 +19,7 @@ import type {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { PipelineInputNode } from "@/components/PipelineInputNode";
+import type { InputNodeData } from "@/components/PipelineInputNode";
 import { PipelineOpNode } from "@/components/PipelineOpNode";
 import type { OpNodeData } from "@/components/PipelineOpNode";
 import type { PipelineGraph } from "@/lib/pipelineGraph";
@@ -59,6 +60,8 @@ function graphToFlow(
   onSwapWithParent: (nodeId: string) => void,
   onSwapWithChild: (nodeId: string) => void,
   onSwapHover: (nodeId: string | null) => void,
+  inputText: string,
+  onInputChange: (text: string) => void,
   selectedNodeId: string | null,
 ): { nodes: Node[]; edges: Edge[] } {
   // Build adjacency maps for canMoveUp/Down computation.
@@ -78,7 +81,7 @@ function graphToFlow(
         position: n.position,
         selected: n.id === selectedNodeId,
         deletable: false,
-        data: {},
+        data: { inputText, onInputChange } satisfies InputNodeData,
       };
     }
 
@@ -146,6 +149,8 @@ interface PipelineFlowEditorProps {
   onRemoveNode: (nodeId: string) => void;
   onSwapWithParent: (nodeId: string) => void;
   onSwapWithChild: (nodeId: string) => void;
+  inputText: string;
+  onInputChange: (text: string) => void;
   selectedNodeId: string | null;
   onSelectNode: (id: string | null) => void;
   onHoverLeafNode: (id: string | null) => void;
@@ -159,6 +164,8 @@ export function PipelineFlowEditor({
   onRemoveNode,
   onSwapWithParent,
   onSwapWithChild,
+  inputText,
+  onInputChange,
   selectedNodeId,
   onSelectNode,
   onHoverLeafNode,
@@ -181,6 +188,8 @@ export function PipelineFlowEditor({
     onSwapWithParent,
     onSwapWithChild,
     setSwapHoverTargetId,
+    inputText,
+    onInputChange,
     selectedNodeId,
   );
 
@@ -194,10 +203,19 @@ export function PipelineFlowEditor({
   useEffect(() => {
     if (prevGraphRef.current === graph) return;
     prevGraphRef.current = graph;
-    const { nodes, edges } = graphToFlow(graph, onUpdateParam, onRemoveNode, onSwapWithParent, onSwapWithChild, setSwapHoverTargetId, selectedNodeId);
+    const { nodes, edges } = graphToFlow(graph, onUpdateParam, onRemoveNode, onSwapWithParent, onSwapWithChild, setSwapHoverTargetId, inputText, onInputChange, selectedNodeId);
     setRFNodes(nodes);
     setRFEdges(edges);
   }, [graph, onUpdateParam, onRemoveNode, onSwapWithParent, onSwapWithChild, setSwapHoverTargetId, selectedNodeId, setRFNodes, setRFEdges]);
+
+  // Update only the input node's data when inputText changes, without rebuilding all nodes.
+  useEffect(() => {
+    setRFNodes((prev) =>
+      prev.map((n) =>
+        n.id === INPUT_NODE_ID ? { ...n, data: { ...n.data, inputText, onInputChange } } : n,
+      ),
+    );
+  }, [inputText, onInputChange, setRFNodes]);
 
   useEffect(() => {
     setRFNodes((prev) =>

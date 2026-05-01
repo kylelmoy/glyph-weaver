@@ -66,7 +66,7 @@ export function usePipeline() {
     try {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) setSavedPipelines(JSON.parse(stored) as SavedPipelineV2[]);
-    } catch {}
+    } catch { }
 
     try {
       const stored = localStorage.getItem(SESSION_KEY);
@@ -76,7 +76,7 @@ export function usePipeline() {
         setGraph(g);
         nextId.current = computeNextId(g);
       }
-    } catch {}
+    } catch { }
   }, []);
 
   // Auto-save the active graph to session storage on every change.
@@ -85,7 +85,7 @@ export function usePipeline() {
     if (sessionSaveCount.current === 1) return; // skip initial render
     try {
       localStorage.setItem(SESSION_KEY, JSON.stringify({ graph }));
-    } catch {}
+    } catch { }
   }, [graph]);
 
   function persist(updated: SavedPipelineV2[]) {
@@ -106,10 +106,10 @@ export function usePipeline() {
         prev.nodes.find((n) => n.id === parentId) ??
         prev.nodes.find((n) => n.id === INPUT_NODE_ID)!;
 
-      const siblingCount = prev.edges.filter((e) => e.source === parent.id).length;
+      const isInputParent = parent.id === INPUT_NODE_ID;
       const position = {
-        x: parent.position.x + siblingCount * 240,
-        y: parent.position.y + 130,
+        x: parent.position.x,
+        y: parent.position.y + (isInputParent ? 300 : 130),
       };
 
       const newNode: PipelineNode = { id: newId, operationId, params, position };
@@ -254,7 +254,7 @@ export function usePipeline() {
     nextId.current = 0;
     try {
       localStorage.removeItem(SESSION_KEY);
-    } catch {}
+    } catch { }
   }
 
   return {
