@@ -7,6 +7,7 @@
  *  Right:  Output panel (per-leaf text areas)
  */
 
+import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { PipelineFlowEditor } from "@/components/PipelineFlowEditor";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -193,10 +194,12 @@ export default function Home() {
         horizontal="between"
         style={{ borderBottom: "1px solid var(--neutral-alpha-medium)", flexShrink: 0 }}
       >
-        <Row vertical="center" gap="s">
-          <Logo size={28} />
-          <Heading as="h1">Glyph Weaver</Heading>
-        </Row>
+        <Link href="/" style={{ textDecoration: "none", color: "inherit" }}>
+          <Row vertical="center" gap="s">
+            <Logo size={28} />
+            <Heading as="h2">Glyph Weaver</Heading>
+          </Row>
+        </Link>
         <Row gap="s" vertical="center">
           <IconButton
             icon="refresh"
@@ -419,7 +422,7 @@ export default function Home() {
           <Column gap="m" padding="m" style={{ flex: 1, overflowY: "auto" }}>
             <Column gap="xs">
               <Heading as="h3">
-                {outputs.length > 1 ? `Outputs (${outputs.length})` : "Output"}
+                Output
               </Heading>
               {outputs.length === 1 ? (
                 <>

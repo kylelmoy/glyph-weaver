@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Badge,
   Button,
@@ -40,20 +41,18 @@ export default function Home() {
       {/* ── Nav ─────────────────────────────────────────────────────────── */}
       <Row
         fillWidth
-        paddingX="l"
-        paddingY="m"
+        paddingX="m"
+        paddingY="s"
         vertical="center"
         horizontal="between"
-        style={{
-          borderBottom: "1px solid var(--neutral-alpha-weak)",
-          backdropFilter: "blur(12px)",
-          flexShrink: 0,
-        }}
+        style={{ borderBottom: "1px solid var(--neutral-alpha-medium)", flexShrink: 0 }}
       >
-        <Row vertical="center" gap="s">
-          <Logo size={24} />
-          <Text variant="label-strong-m">Glyph Weaver</Text>
-        </Row>
+        <Link href="/" style={{ textDecoration: "none", color: "inherit" }}>
+          <Row vertical="center" gap="s">
+            <Logo size={28} />
+            <Heading as="h2">Glyph Weaver</Heading>
+          </Row>
+        </Link>
         <ThemeToggle />
       </Row>
 
