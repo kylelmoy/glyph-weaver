@@ -2,11 +2,11 @@
  * Pipeline graph — type definitions and DAG execution engine for Glyph Weaver.
  *
  * A pipeline is a directed acyclic graph (DAG) where:
- *  - The single input node (`INPUT_NODE_ID`) is the root and provides raw text.
- *  - Operation nodes transform text received from their parent.
- *  - The graph may fan out (one parent, multiple children) but not fan in —
- *    each node has at most one parent. Multi-parent merging is not supported.
- *  - Leaf nodes (no outgoing edges) produce the visible outputs.
+ *  - Input nodes (`operationId === INPUT_NODE_ID`) are roots that provide text.
+ *  - Operation nodes transform text received from their parent(s).
+ *  - Set operation nodes accept two inputs via handles "a" and "b".
+ *  - Output/tap nodes are passthroughs that always appear in the output panel.
+ *  - Leaf nodes (no outgoing edges) also produce visible outputs.
  *
  * @module pipelineGraph
  */
@@ -15,8 +15,11 @@ import { OPERATIONS } from "./operations";
 
 // ── Sentinel IDs ──────────────────────────────────────────────────────────────
 
-/** Reserved node ID for the always-present input node. */
+/** Reserved operationId (and primary node ID) for input nodes. */
 export const INPUT_NODE_ID = "__input__";
+
+/** Reserved operationId for output/tap nodes. */
+export const OUTPUT_NODE_ID = "__output__";
 
 /**
  * Sentinel output ID returned when the graph has no operation nodes.
@@ -36,7 +39,10 @@ const CYCLE_OUTPUT_ID = "__cycle__";
 export interface PipelineNode {
   /** Stable unique identifier within this graph. */
   id: string;
-  /** ID of the operation from the OPERATIONS registry, or `INPUT_NODE_ID`. */
+  /**
+   * ID of the operation from the OPERATIONS registry, `INPUT_NODE_ID`, or
+   * `OUTPUT_NODE_ID`.
+   */
   operationId: string;
   /** Current values for each of the operation's configurable parameters. */
   params: Record<string, string>;
@@ -44,11 +50,16 @@ export interface PipelineNode {
   position: { x: number; y: number };
 }
 
-/** A directed edge: text output of `source` feeds as input into `target`. */
+/**
+ * A directed edge: text output of `source` feeds as input into `target`.
+ * For set operation nodes, `targetHandle` specifies which input slot ("a" or "b").
+ */
 export interface PipelineEdge {
   id: string;
   source: string;
   target: string;
+  /** Which input handle on the target node this edge connects to ("a" or "b"). */
+  targetHandle?: string;
 }
 
 /** The complete pipeline graph: nodes and the edges connecting them. */
@@ -71,49 +82,54 @@ export interface SavedPipelineV2 {
   graph: PipelineGraph;
 }
 
-/** One output produced by `processGraph` — one per leaf node. */
+/** One output produced by `processGraph`. */
 export interface GraphOutput {
-  /** The leaf node's ID. Stable React key. */
+  /** The node's ID. Stable React key. */
   id: string;
-  /** The final transformed text produced by that leaf. */
+  /** The transformed text produced by that node. */
   text: string;
+  /** Optional label from an output/tap node's params. */
+  label?: string;
 }
 
 // ── Graph processing ──────────────────────────────────────────────────────────
 
 /**
  * Execute `input` through the pipeline DAG and return one `GraphOutput` per
- * leaf node (a node with no outgoing edges), in topological discovery order.
+ * output/tap node (in graph order) and per leaf node.
  *
- * Diverging paths (fan-out) are handled naturally: each node's result is
- * cached after computation and independently read by each of its children.
+ * - Input nodes are pre-seeded with their text (primary from `input`, additional
+ *   from their `params.text`).
+ * - Set operation nodes receive two inputs via edge handles "a" and "b".
+ * - Output/tap nodes are passthroughs that always appear in the result.
+ * - Leaf operation nodes (no outgoing edges) also appear in the result.
  *
- * @param input - Raw text to feed into the input node (newline-delimited).
+ * @param input - Raw text for the primary input node (newline-delimited).
  * @param graph - The pipeline DAG to execute.
- * @returns One output per leaf, or `[{ id: EMPTY_OUTPUT_ID, text: "" }]` when
- *          there are no operation nodes or a cycle is detected.
  */
 export function processGraph(input: string, graph: PipelineGraph): GraphOutput[] {
-  const opNodes = graph.nodes.filter((n) => n.id !== INPUT_NODE_ID);
-  if (opNodes.length === 0) return [{ id: EMPTY_OUTPUT_ID, text: "" }];
+  const inputNodes = graph.nodes.filter((n) => n.operationId === INPUT_NODE_ID);
+  const execNodes = graph.nodes.filter((n) => n.operationId !== INPUT_NODE_ID);
 
-  // ── Build adjacency structures in a single pass over edges ─────────────────
+  if (execNodes.length === 0) return [{ id: EMPTY_OUTPUT_ID, text: "" }];
+
+  // ── Build adjacency structures ─────────────────────────────────────────────
   const childrenOf = new Map<string, string[]>();
-  const parentOf = new Map<string, string>(); // single parent per node (fan-in not supported)
+  const parentsOf = new Map<string, { source: string; targetHandle?: string }[]>();
   const inDegree = new Map<string, number>();
 
   for (const node of graph.nodes) {
     childrenOf.set(node.id, []);
+    parentsOf.set(node.id, []);
     inDegree.set(node.id, 0);
   }
   for (const edge of graph.edges) {
     childrenOf.get(edge.source)?.push(edge.target);
-    parentOf.set(edge.target, edge.source); // overwrites if multiple parents exist
+    parentsOf.get(edge.target)?.push({ source: edge.source, targetHandle: edge.targetHandle });
     inDegree.set(edge.target, (inDegree.get(edge.target) ?? 0) + 1);
   }
 
   // ── Kahn's BFS topological sort ────────────────────────────────────────────
-  // Seed the queue with all nodes that have no incoming edges (roots).
   const queue: string[] = [];
   for (const [id, deg] of inDegree) {
     if (deg === 0) queue.push(id);
@@ -124,7 +140,6 @@ export function processGraph(input: string, graph: PipelineGraph): GraphOutput[]
     const current = queue.shift();
     if (current === undefined) break;
     topoOrder.push(current);
-    // Decrement in-degree of each child; enqueue when it reaches zero.
     for (const child of childrenOf.get(current) ?? []) {
       const newDeg = (inDegree.get(child) ?? 1) - 1;
       inDegree.set(child, newDeg);
@@ -132,38 +147,74 @@ export function processGraph(input: string, graph: PipelineGraph): GraphOutput[]
     }
   }
 
-  // If not all nodes were visited, the graph contains a cycle.
   if (topoOrder.length !== graph.nodes.length) {
     console.warn("processGraph: cycle detected, returning empty output");
     return [{ id: CYCLE_OUTPUT_ID, text: "" }];
   }
 
-  // ── Execute operations in topological order ────────────────────────────────
-  // The input node is pre-seeded; every other node reads from its parent's cache.
+  // ── Execute in topological order ───────────────────────────────────────────
   const outputCache = new Map<string, string>();
-  outputCache.set(INPUT_NODE_ID, input);
+
+  // Seed all input nodes.
+  for (const node of inputNodes) {
+    outputCache.set(node.id, node.id === INPUT_NODE_ID ? input : (node.params.text ?? ""));
+  }
 
   const nodeById = new Map(graph.nodes.map((n) => [n.id, n]));
 
   for (const id of topoOrder) {
-    if (id === INPUT_NODE_ID) continue; // already seeded above
+    if (outputCache.has(id)) continue; // already seeded (input nodes)
 
-    const node = nodeById.get(id);
-    if (!node) continue;
+    const node = nodeById.get(id)!;
+    const parents = parentsOf.get(id) ?? [];
 
-    const parentId = parentOf.get(id);
-    const sourceText = parentId !== undefined ? (outputCache.get(parentId) ?? input) : input;
+    if (node.operationId === OUTPUT_NODE_ID) {
+      // Passthrough: output equals first parent's output.
+      const parentId = parents[0]?.source;
+      outputCache.set(id, parentId ? (outputCache.get(parentId) ?? "") : "");
+      continue;
+    }
+
     const op = OPERATIONS.find((o) => o.id === node.operationId);
-    const lines = sourceText === "" ? [] : sourceText.split("\n");
-    const resultLines = op ? op.apply(lines, node.params) : lines;
-    outputCache.set(id, resultLines.join("\n"));
+
+    if (op?.applyMulti) {
+      // Multi-input (set operations): resolve inputs by targetHandle.
+      const aParent = parents.find((p) => p.targetHandle === "a");
+      const bParent = parents.find((p) => p.targetHandle === "b");
+      const aText = aParent ? (outputCache.get(aParent.source) ?? "") : "";
+      const bText = bParent ? (outputCache.get(bParent.source) ?? "") : "";
+      const aLines = aText === "" ? [] : aText.split("\n");
+      const bLines = bText === "" ? [] : bText.split("\n");
+      outputCache.set(id, op.applyMulti([aLines, bLines], node.params).join("\n"));
+    } else {
+      // Single-input operations.
+      const parentId = parents[0]?.source;
+      const sourceText = parentId !== undefined ? (outputCache.get(parentId) ?? input) : input;
+      const lines = sourceText === "" ? [] : sourceText.split("\n");
+      const resultLines = op ? op.apply(lines, node.params) : lines;
+      outputCache.set(id, resultLines.join("\n"));
+    }
   }
 
-  // ── Collect leaf outputs ───────────────────────────────────────────────────
-  const leaves = topoOrder.filter(
-    (id) => id !== INPUT_NODE_ID && (childrenOf.get(id)?.length ?? 0) === 0,
+  // ── Collect outputs ────────────────────────────────────────────────────────
+  // Output/tap nodes that have at least one connected parent are always shown.
+  const outputTaps = execNodes.filter(
+    (n) => n.operationId === OUTPUT_NODE_ID && (parentsOf.get(n.id)?.length ?? 0) > 0,
   );
-  return leaves.length > 0
-    ? leaves.map((id) => ({ id, text: outputCache.get(id) ?? "" }))
-    : [{ id: EMPTY_OUTPUT_ID, text: "" }];
+  // Leaves: non-input, non-output-tap nodes with no outgoing edges.
+  const leaves = execNodes.filter(
+    (n) =>
+      n.operationId !== OUTPUT_NODE_ID && (childrenOf.get(n.id)?.length ?? 0) === 0,
+  );
+
+  const allOutputs = [
+    ...outputTaps.map((n) => ({
+      id: n.id,
+      text: outputCache.get(n.id) ?? "",
+      label: n.params.label || undefined,
+    })),
+    ...leaves.map((n) => ({ id: n.id, text: outputCache.get(n.id) ?? "" })),
+  ];
+
+  return allOutputs.length > 0 ? allOutputs : [{ id: EMPTY_OUTPUT_ID, text: "" }];
 }

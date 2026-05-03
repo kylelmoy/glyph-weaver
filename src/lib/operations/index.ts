@@ -18,6 +18,7 @@ import { caseOps } from "./caseOps";
 import { editOps } from "./editOps";
 import { formatOps } from "./formatOps";
 import { customOps } from "./customOps";
+import { setOps } from "./setOps";
 
 /** Complete ordered registry of all available text-processing operations. */
 export const OPERATIONS = [
@@ -27,6 +28,7 @@ export const OPERATIONS = [
   ...editOps,
   ...formatOps,
   ...customOps,
+  ...setOps,
 ];
 
 /**
@@ -41,4 +43,5 @@ export const OPERATION_CATEGORIES: OperationCategory[] = [
   "Case",
   "Edit",
   "Format",
+  "Set",
 ];

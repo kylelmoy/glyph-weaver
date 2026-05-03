@@ -15,7 +15,7 @@ import type {
   PipelineNode,
   SavedPipelineV2,
 } from "@/lib/pipelineGraph";
-import { INPUT_NODE_ID } from "@/lib/pipelineGraph";
+import { INPUT_NODE_ID, OUTPUT_NODE_ID } from "@/lib/pipelineGraph";
 import { OPERATIONS } from "@/lib/operations";
 import { useEffect, useRef, useState } from "react";
 
@@ -167,11 +167,81 @@ export function usePipeline() {
         id: `e-${parent.id}-${newId}`,
         source: parent.id,
         target: newId,
+        // Set op nodes receive their first auto-connection on handle "a".
+        ...(op?.multiInput ? { targetHandle: "a" } : {}),
       };
       return {
         nodes: [...prev.nodes, newNode],
         edges: [...prev.edges, newEdge],
       };
+    });
+
+    setSelectedNodeId(newId);
+  }
+
+  /**
+   * Add a new additional input node to the graph. It is positioned to the right
+   * of the primary input node and has no automatic edges — the user draws
+   * connections manually.
+   */
+  function addInputNode(
+    findFreePosition?: (pos: { x: number; y: number }, nudgeRight: boolean) => { x: number; y: number },
+  ) {
+    const newId = String(nextId.current++);
+    const primaryInput = graph.nodes.find((n) => n.id === INPUT_NODE_ID)!;
+
+    let position = {
+      x: primaryInput.position.x + 320,
+      y: primaryInput.position.y,
+    };
+
+    if (findFreePosition) {
+      position = findFreePosition(position, true);
+    }
+
+    setGraph((prev) => ({
+      ...prev,
+      nodes: [
+        ...prev.nodes,
+        { id: newId, operationId: INPUT_NODE_ID, params: { text: "" }, position },
+      ],
+    }));
+
+    setSelectedNodeId(newId);
+  }
+
+  /**
+   * Add a new output/tap node connected from the currently selected node (or
+   * unconnected if nothing is selected). The node appears in the output panel
+   * regardless of whether it is a leaf, allowing mid-pipeline inspection.
+   */
+  function addOutputNode(
+    findFreePosition?: (pos: { x: number; y: number }, nudgeRight: boolean) => { x: number; y: number },
+  ) {
+    const newId = String(nextId.current++);
+    const parentId = selectedNodeId;
+    const parent = parentId ? graph.nodes.find((n) => n.id === parentId) : null;
+
+    let position = parent
+      ? { x: parent.position.x + 320, y: parent.position.y }
+      : { x: 0, y: 300 };
+
+    if (findFreePosition) {
+      position = findFreePosition(position, true);
+    }
+
+    setGraph((prev) => {
+      const newNode: PipelineNode = {
+        id: newId,
+        operationId: OUTPUT_NODE_ID,
+        params: { label: "" },
+        position,
+      };
+      const edges = [...prev.edges];
+      if (parentId) {
+        edges.push({ id: `e-${parentId}-${newId}`, source: parentId, target: newId });
+      }
+      return { ...prev, nodes: [...prev.nodes, newNode], edges };
     });
 
     setSelectedNodeId(newId);
@@ -192,6 +262,7 @@ export function usePipeline() {
    * to each of its outgoing edges so downstream nodes stay connected.
    */
   function removeOperation(instanceId: string) {
+    // Only the primary input node is protected; additional input nodes can be removed.
     if (instanceId === INPUT_NODE_ID) return;
     if (selectedNodeId === instanceId) setSelectedNodeId(null);
     setGraph((prev) => {
@@ -346,6 +417,8 @@ export function usePipeline() {
     showSaved,
     setShowSaved,
     addOperation,
+    addInputNode,
+    addOutputNode,
     updateParam,
     removeOperation,
     savePipeline,

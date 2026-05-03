@@ -27,6 +27,8 @@ export interface OpNodeData extends Record<string, unknown> {
   shiftHeld?: boolean;
   /** True when this node is in the cascade-delete preview set. */
   deletePending?: boolean;
+  /** True for set operations that take two inputs (handles "a" and "b"). */
+  multiInput?: boolean;
 }
 
 /**
@@ -89,9 +91,37 @@ export function PipelineOpNode({ id, data, selected }: NodeProps) {
         maxWidth: 280,
       }}
     >
-      <Handle type="target" position={Position.Top} isConnectableStart={false} />
+      {nodeData.multiInput ? (
+        <>
+          <Handle
+            type="target"
+            id="a"
+            position={Position.Top}
+            style={{ left: "30%" }}
+          />
+          <Handle
+            type="target"
+            id="b"
+            position={Position.Top}
+            style={{ left: "70%" }}
+          />
+        </>
+      ) : (
+        <Handle type="target" position={Position.Top} isConnectableStart={false} />
+      )}
 
       <Column gap="xs" padding="s">
+        {nodeData.multiInput && (
+          <Row horizontal="between" style={{ paddingBottom: 2 }}>
+            <Text variant="body-default-xs" onBackground="neutral-weak">
+              A
+            </Text>
+            <Text variant="body-default-xs" onBackground="neutral-weak">
+              B
+            </Text>
+          </Row>
+        )}
+
         <Row gap="s" vertical="center" horizontal="between">
           <Text variant="label-strong-s" title={op.description}>
             {op.name}
@@ -152,7 +182,7 @@ export function PipelineOpNode({ id, data, selected }: NodeProps) {
         ))}
       </Column>
 
-      <Handle type="source" position={Position.Bottom} isConnectableStart={false} />
+      <Handle type="source" position={Position.Bottom} />
     </div>
   );
 }

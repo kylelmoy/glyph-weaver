@@ -128,6 +128,8 @@ export default function Home() {
     showSaved,
     setShowSaved,
     addOperation,
+    addInputNode,
+    addOutputNode,
     updateParam,
     removeOperation,
     removeCascade,
@@ -166,6 +168,9 @@ export default function Home() {
       [operationId, ...prev.filter((id) => id !== operationId)].slice(0, 6),
     );
   };
+
+  const handleAddInputNode = () => addInputNode(findFreePositionRef.current);
+  const handleAddOutputNode = () => addOutputNode(findFreePositionRef.current);
 
   const outputs = useMemo(() => processGraph(inputText, graph), [inputText, graph]);
 
@@ -252,6 +257,29 @@ export default function Home() {
                 ) : undefined
               }
             />
+            <Row gap="xs">
+              <Button
+                style={{ flex: 1 }}
+                size="s"
+                variant="secondary"
+                suffixIcon="plus"
+                onClick={handleAddInputNode}
+                title="Add a new input node to the canvas"
+              >
+                Input
+              </Button>
+              <Button
+                style={{ flex: 1 }}
+                size="s"
+                variant="secondary"
+                suffixIcon="plus"
+                onClick={handleAddOutputNode}
+                title="Add an output tap node below the selected node"
+              >
+                Output
+              </Button>
+            </Row>
+            <Line />
           </Column>
 
           {/* Scrollable operation list */}
@@ -431,6 +459,11 @@ export default function Home() {
               <Heading as="h3">Output</Heading>
               {outputs.length === 1 ? (
                 <>
+                  {outputs[0].label && (
+                    <Text variant="label-default-xs" onBackground="neutral-weak">
+                      {outputs[0].label}
+                    </Text>
+                  )}
                   <Textarea
                     id="output"
                     value={outputs[0].text}
@@ -454,7 +487,7 @@ export default function Home() {
                 outputs.map((out: GraphOutput, i: number) => (
                   <Column key={out.id} gap="xs">
                     <Text variant="label-default-xs" onBackground="neutral-weak">
-                      Output {i + 1}
+                      {out.label ?? `Output ${i + 1}`}
                     </Text>
                     <Textarea
                       id={`output-${out.id}`}

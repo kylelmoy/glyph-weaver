@@ -1,5 +1,5 @@
-/** The six groupings shown in the Operations panel. */
-export type OperationCategory = "Sorting" | "Filtering" | "Case" | "Edit" | "Format" | "Custom";
+/** The groupings shown in the Operations panel. */
+export type OperationCategory = "Sorting" | "Filtering" | "Case" | "Edit" | "Format" | "Custom" | "Set";
 
 /** A single configurable input field displayed on an operation node. */
 export interface ParamDefinition {
@@ -35,4 +35,14 @@ export interface OperationDefinition {
    * regex or malformed input), return `lines` unchanged.
    */
   apply: (lines: string[], params: Record<string, string>) => string[];
+  /**
+   * When true, this operation accepts two input streams (handles "a" and "b")
+   * and `applyMulti` is called instead of `apply` during execution.
+   */
+  multiInput?: true;
+  /**
+   * Multi-input transformation function used for set operations.
+   * `inputs[0]` corresponds to handle "a"; `inputs[1]` to handle "b".
+   */
+  applyMulti?: (inputs: string[][], params: Record<string, string>) => string[];
 }

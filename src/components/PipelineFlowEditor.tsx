@@ -23,34 +23,41 @@ import { PipelineInputNode } from "@/components/PipelineInputNode";
 import type { InputNodeData } from "@/components/PipelineInputNode";
 import { PipelineOpNode } from "@/components/PipelineOpNode";
 import type { OpNodeData } from "@/components/PipelineOpNode";
+import { PipelineOutputNode } from "@/components/PipelineOutputNode";
+import type { OutputNodeData } from "@/components/PipelineOutputNode";
 import type { PipelineGraph } from "@/lib/pipelineGraph";
-import { INPUT_NODE_ID } from "@/lib/pipelineGraph";
+import { INPUT_NODE_ID, OUTPUT_NODE_ID } from "@/lib/pipelineGraph";
 import { OPERATIONS } from "@/lib/operations";
 import { useTheme } from "@once-ui-system/core";
 import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
 
 // Node type map is defined outside the component so React Flow receives a stable
 // reference and does not remount nodes on every parent re-render.
-const NODE_TYPES = { op: PipelineOpNode, "pipeline-input": PipelineInputNode };
+const NODE_TYPES = {
+  op: PipelineOpNode,
+  "pipeline-input": PipelineInputNode,
+  "pipeline-output": PipelineOutputNode,
+};
 
 /**
- * Walk the edge list backwards from `leafId`, collecting every ancestor node ID
- * and the connecting edge ID along the path to the root. Used to highlight the
- * active pipeline path when a leaf node is hovered.
+ * Walk the edge list backwards from `startId` using BFS, collecting every
+ * ancestor node ID and the connecting edge IDs along the way. Handles fan-in
+ * (set operation nodes with two parents).
  */
 function getAncestorPath(
-  leafId: string,
+  startId: string,
   edges: Edge[],
 ): { nodeIds: Set<string>; edgeIds: Set<string> } {
   const nodeIds = new Set<string>();
   const edgeIds = new Set<string>();
-  let current: string | undefined = leafId;
-  while (current) {
+  const queue = [startId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
     nodeIds.add(current);
-    const parentEdge = edges.find((e) => e.target === current);
-    if (!parentEdge) break;
-    edgeIds.add(parentEdge.id);
-    current = parentEdge.source;
+    for (const parentEdge of edges.filter((e) => e.target === current)) {
+      edgeIds.add(parentEdge.id);
+      if (!nodeIds.has(parentEdge.source)) queue.push(parentEdge.source);
+    }
   }
   return { nodeIds, edgeIds };
 }
@@ -78,12 +85,6 @@ function getDescendantIds(sourceId: string, edges: Edge[]): Set<string> {
 
 /**
  * Convert a `PipelineGraph` to the node/edge format React Flow expects.
- *
- * Callbacks (onUpdateParam, onRemoveNode, etc.) are attached to node data here
- * because React Flow node components receive data as a plain prop and cannot
- * directly close over parent-component state.
- *
- * This is a one-way conversion — call `flowToGraph` to go the other direction.
  */
 function graphToFlow(
   graph: PipelineGraph,
@@ -108,25 +109,59 @@ function graphToFlow(
   }
 
   const nodes: Node[] = graph.nodes.map((n) => {
-    if (n.id === INPUT_NODE_ID) {
+    if (n.operationId === INPUT_NODE_ID) {
+      const isPrimary = n.id === INPUT_NODE_ID;
       return {
         id: n.id,
         type: "pipeline-input" as const,
         position: n.position,
         selected: n.id === selectedNodeId,
-        deletable: false,
-        data: { inputText, onInputChange } satisfies InputNodeData,
+        deletable: !isPrimary,
+        data: (isPrimary
+          ? { inputText, onInputChange, isPrimary: true }
+          : {
+              text: n.params.text ?? "",
+              onTextChange: (v: string) => onUpdateParam(n.id, "text", v),
+              onRemove: () => onRemoveNode(n.id),
+              isPrimary: false,
+            }) satisfies InputNodeData,
+      };
+    }
+
+    if (n.operationId === OUTPUT_NODE_ID) {
+      return {
+        id: n.id,
+        type: "pipeline-output" as const,
+        position: n.position,
+        selected: n.id === selectedNodeId,
+        data: {
+          params: n.params,
+          onUpdateParam: (key: string, value: string) => onUpdateParam(n.id, key, value),
+          onRemove: () => onRemoveNode(n.id),
+          highlighted: false,
+        } satisfies OutputNodeData,
       };
     }
 
     const parentId = parentOf.get(n.id);
     const children = childrenOf.get(n.id) ?? [];
-    // Can move up: parent is a real op node (not the input node).
-    const canMoveUp = !!parentId && parentId !== INPUT_NODE_ID;
-    // Can move down: has exactly one child (child always has one parent by graph invariant).
-    const canMoveDown = children.length === 1;
-
     const op = OPERATIONS.find((o) => o.id === n.operationId);
+
+    // Reordering is disabled for set operations (multi-input).
+    const parentNode = parentId ? graph.nodes.find((p) => p.id === parentId) : undefined;
+    const singleChild = children.length === 1 ? graph.nodes.find((c) => c.id === children[0]) : undefined;
+    const canMoveUp =
+      !op?.multiInput &&
+      !!parentId &&
+      !!parentNode &&
+      parentNode.operationId !== INPUT_NODE_ID &&
+      parentNode.operationId !== OUTPUT_NODE_ID;
+    const canMoveDown =
+      !op?.multiInput &&
+      !!singleChild &&
+      singleChild.operationId !== INPUT_NODE_ID &&
+      singleChild.operationId !== OUTPUT_NODE_ID;
+
     return {
       id: n.id,
       type: "op" as const,
@@ -148,7 +183,8 @@ function graphToFlow(
         swapDownTargetId: canMoveDown ? children[0] : undefined,
         shiftHeld: false,
         deletePending: false,
-      },
+        multiInput: op?.multiInput,
+      } satisfies OpNodeData,
       ariaLabel: op?.name,
     };
   });
@@ -157,6 +193,7 @@ function graphToFlow(
     id: e.id,
     source: e.source,
     target: e.target,
+    ...(e.targetHandle ? { targetHandle: e.targetHandle } : {}),
   }));
 
   return { nodes, edges };
@@ -168,16 +205,37 @@ function graphToFlow(
  */
 function flowToGraph(rfNodes: Node[], rfEdges: Edge[]): PipelineGraph {
   return {
-    nodes: rfNodes.map((n) => ({
-      id: n.id,
-      operationId: n.id === INPUT_NODE_ID ? INPUT_NODE_ID : (n.data as OpNodeData).operationId,
-      params: n.id === INPUT_NODE_ID ? {} : (n.data as OpNodeData).params,
-      position: n.position,
-    })),
+    nodes: rfNodes.map((n) => {
+      if (n.type === "pipeline-input") {
+        const inputData = n.data as InputNodeData;
+        return {
+          id: n.id,
+          operationId: INPUT_NODE_ID,
+          params: n.id === INPUT_NODE_ID ? {} : { text: inputData.text ?? "" },
+          position: n.position,
+        };
+      }
+      if (n.type === "pipeline-output") {
+        const outData = n.data as OutputNodeData;
+        return {
+          id: n.id,
+          operationId: OUTPUT_NODE_ID,
+          params: { label: outData.params.label ?? "" },
+          position: n.position,
+        };
+      }
+      return {
+        id: n.id,
+        operationId: (n.data as OpNodeData).operationId,
+        params: (n.data as OpNodeData).params,
+        position: n.position,
+      };
+    }),
     edges: rfEdges.map((e) => ({
       id: e.id,
       source: e.source,
       target: e.target,
+      ...(e.targetHandle ? { targetHandle: e.targetHandle } : {}),
     })),
   };
 }
@@ -231,15 +289,6 @@ function IntersectionHelper({
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-/**
- * Props for PipelineFlowEditor.
- *
- * The component maintains its own React Flow state (rfNodes/rfEdges) that
- * mirrors the authoritative `graph` prop. Changes originating inside React
- * Flow (drags, deletions, new connections) are propagated out via `onGraphChange`.
- * Changes originating outside (adding an operation from the palette) arrive via
- * the `graph` prop and are synced in using a `useEffect`.
- */
 interface PipelineFlowEditorProps {
   graph: PipelineGraph;
   onGraphChange: (graph: PipelineGraph) => void;
@@ -257,14 +306,6 @@ interface PipelineFlowEditorProps {
   onRemoveCascadeNode: (nodeId: string) => void;
 }
 
-/**
- * Interactive React Flow canvas for the pipeline graph.
- *
- * Maintains a local copy of nodes/edges in React Flow's format and
- * bidirectionally syncs with the authoritative `PipelineGraph` managed by
- * `usePipeline`. Handles drag-to-reposition, Delete-key removal, manual edge
- * connections, leaf-node hover highlighting, and swap-target highlighting.
- */
 export function PipelineFlowEditor({
   graph,
   onGraphChange,
@@ -322,9 +363,6 @@ export function PipelineFlowEditor({
   const [rfNodes, setRFNodes, onRFNodesChange] = useNodesState<Node>(initialNodes);
   const [rfEdges, setRFEdges, onRFEdgesChange] = useEdgesState(initialEdges);
 
-  // Tracks the last graph we synced FROM, so the graph→RF sync effect can
-  // distinguish external prop changes from changes it wrote itself (which would
-  // otherwise trigger a redundant rebuild of the entire RF node/edge list).
   const prevGraphRef = useRef(graph);
 
   // Sync graph → RF when graph changes externally (e.g., palette adds a node).
@@ -359,7 +397,7 @@ export function PipelineFlowEditor({
     onRemoveCascadeNode,
   ]);
 
-  // Update only the input node's data when inputText changes, without rebuilding all nodes.
+  // Update only the primary input node's data when inputText changes.
   useEffect(() => {
     setRFNodes((prev) =>
       prev.map((n) =>
@@ -435,7 +473,7 @@ export function PipelineFlowEditor({
           onGraphChange(newGraph);
           break;
         }
-        // Sync node removal to graph (e.g. Delete key) — input node cannot be removed.
+        // Sync node removal to graph (Delete key) — primary input node cannot be removed.
         if (change.type === "remove" && change.id !== INPUT_NODE_ID) {
           if (change.id === selectedNodeId) onSelectNode(null);
           const removedId = change.id;
@@ -474,8 +512,12 @@ export function PipelineFlowEditor({
 
   const handleNodeMouseEnter = useCallback(
     (_e: MouseEvent, node: Node) => {
-      const isLeaf = node.id !== INPUT_NODE_ID && !rfEdges.some((e) => e.source === node.id);
-      if (isLeaf) {
+      // Input nodes are roots; they don't have output panel entries.
+      if (node.type === "pipeline-input") return;
+      // Output tap nodes are always in the output panel.
+      const isOutputTap = node.type === "pipeline-output";
+      const isLeaf = !rfEdges.some((e) => e.source === node.id);
+      if (isLeaf || isOutputTap) {
         setHoveredLocalLeafId(node.id);
         onHoverLeafNode(node.id);
       }
@@ -519,12 +561,23 @@ export function PipelineFlowEditor({
 
   const isValidConnection: IsValidConnection = useCallback(
     (connection) => {
-      if (connection.target === INPUT_NODE_ID) return false;
-      // Each node may only have one incoming edge (diverging only, not converging).
-      const targetAlreadyHasParent = rfEdges.some((e) => e.target === connection.target);
-      return !targetAlreadyHasParent && connection.source !== connection.target;
+      // Input nodes (all types) cannot be connection targets.
+      const targetNode = rfNodes.find((n) => n.id === connection.target);
+      if (targetNode?.type === "pipeline-input") return false;
+      if (connection.source === connection.target) return false;
+
+      // Set op nodes: check per-handle uniqueness (one edge per handle).
+      const targetData = targetNode?.data as OpNodeData | undefined;
+      if (targetData?.multiInput) {
+        return !rfEdges.some(
+          (e) => e.target === connection.target && e.targetHandle === connection.targetHandle,
+        );
+      }
+
+      // All other nodes: only one incoming edge allowed.
+      return !rfEdges.some((e) => e.target === connection.target);
     },
-    [rfEdges],
+    [rfNodes, rfEdges],
   );
 
   return (
