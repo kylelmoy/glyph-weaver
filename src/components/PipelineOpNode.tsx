@@ -36,7 +36,7 @@ export function PipelineOpNode({ id, data, selected }: NodeProps) {
     <div
       style={{
         background: isHighlighted ? "var(--accent-alpha-weak)" : "var(--background-page)",
-        border: `2px solid ${selected ? "var(--brand-solid-strong)" : "var(--neutral-alpha-medium)"}`,
+        border: `2px solid ${selected || isHighlighted ? "var(--brand-solid-strong)" : "var(--neutral-alpha-medium)"}`,
         transition: "background 0.15s",
         borderRadius: "var(--radius-m)",
         minWidth: 200,

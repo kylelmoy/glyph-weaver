@@ -23,7 +23,7 @@ export function PipelineInputNode({ data, selected }: NodeProps) {
     <div
       style={{
         background: nodeData.highlighted ? "var(--accent-alpha-weak)" : undefined,
-        border: `2px solid ${selected ? "var(--accent-solid-strong)" : "var(--neutral-alpha-medium)"}`,
+        border: `2px solid ${selected || nodeData.highlighted ? "var(--brand-solid-strong)" : "var(--neutral-alpha-medium)"}`,
         borderRadius: "var(--radius-m)",
         minWidth: 240,
         transition: "background 0.15s",

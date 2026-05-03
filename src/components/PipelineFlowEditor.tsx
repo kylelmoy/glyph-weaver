@@ -345,6 +345,9 @@ export function PipelineFlowEditor({
       prev.map((e) => ({
         ...e,
         animated: edgeIds.has(e.id),
+        style: edgeIds.has(e.id)
+          ? { stroke: "var(--brand-solid-strong)", strokeWidth: 2 }
+          : undefined,
       })),
     );
   }, [activeLeafId, graph.edges, setRFNodes, setRFEdges]);
