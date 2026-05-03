@@ -135,7 +135,7 @@ export function usePipeline() {
    */
   function addOperation(
     operationId: string,
-    findFreePosition?: (pos: { x: number; y: number }) => { x: number; y: number },
+    findFreePosition?: (pos: { x: number; y: number }, nudgeRight: boolean) => { x: number; y: number },
   ) {
     const op = OPERATIONS.find((o) => o.id === operationId);
     const params: Record<string, string> = {};
@@ -157,7 +157,8 @@ export function usePipeline() {
     };
 
     if (findFreePosition) {
-      position = findFreePosition(position);
+      const parentHasChildren = graph.edges.some((e) => e.source === parentId);
+      position = findFreePosition(position, parentHasChildren);
     }
 
     setGraph((prev) => {

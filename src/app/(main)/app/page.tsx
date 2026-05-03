@@ -157,7 +157,7 @@ export default function Home() {
   // Populated by IntersectionHelper (rendered inside the React Flow canvas), which
   // uses the ReactFlow context to check candidate positions against existing nodes.
   const findFreePositionRef = useRef<
-    ((pos: { x: number; y: number }) => { x: number; y: number }) | undefined
+    ((pos: { x: number; y: number }, nudgeRight: boolean) => { x: number; y: number }) | undefined
   >(undefined);
 
   const addOperationAndTrack = (operationId: string) => {

@@ -185,13 +185,13 @@ function flowToGraph(rfNodes: Node[], rfEdges: Edge[]): PipelineGraph {
 // ── Intersection helper ───────────────────────────────────────────────────────
 
 type Position = { x: number; y: number };
-type FindFreePosition = (pos: Position) => Position;
+type FindFreePosition = (pos: Position, nudgeRight: boolean) => Position;
 
 // Estimated op-node dimensions used for intersection checking (see PipelineOpNode styles).
 const NODE_W = 280; // matches maxWidth
 const NODE_H = 120; // approximates height with one param input
 
-const NUDGE_STEP = NODE_H + 20; // vertical step when searching for a free position
+const NUDGE_STEP = NODE_H + 20; // step when searching for a free position
 
 /**
  * A render-null component that lives inside `<ReactFlow>` (giving it access to
@@ -209,7 +209,7 @@ function IntersectionHelper({
 }) {
   const { getIntersectingNodes } = useReactFlow();
 
-  findFreePositionRef.current = (pos) => {
+  findFreePositionRef.current = (pos, nudgeRight) => {
     let candidate = { ...pos };
     for (let i = 0; i < 30; i++) {
       const hits = getIntersectingNodes(
@@ -217,7 +217,11 @@ function IntersectionHelper({
         true,
       );
       if (hits.length === 0) return candidate;
-      candidate = { ...candidate, x: candidate.x + NUDGE_STEP };
+      if (nudgeRight) {
+        candidate = { ...candidate, x: candidate.x + NUDGE_STEP };
+      } else {
+        candidate = { ...candidate, y: candidate.y + NUDGE_STEP };
+      }
     }
     return candidate;
   };
