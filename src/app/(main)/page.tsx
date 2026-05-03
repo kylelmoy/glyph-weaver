@@ -36,7 +36,7 @@ const FEATURES = [
 
 export default function Home() {
   return (
-    <Column fillWidth style={{ minHeight: "100dvh" }}>
+    <Column fillWidth style={{ height: "100dvh", overflow: "hidden" }}>
 
       {/* ── Nav ─────────────────────────────────────────────────────────── */}
       <Row
