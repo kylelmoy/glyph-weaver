@@ -57,6 +57,23 @@ function getAncestorPath(
 
 export type OpNode = Node<OpNodeData, "op">;
 
+/**
+ * Collect a node and all its descendants by following outgoing edges.
+ * Used to compute the preview set for a cascade deletion.
+ */
+function getDescendantIds(sourceId: string, edges: Edge[]): Set<string> {
+  const ids = new Set<string>();
+  const queue = [sourceId];
+  while (queue.length > 0) {
+    const id = queue.shift()!;
+    ids.add(id);
+    edges.filter((e) => e.source === id).forEach((e) => {
+      if (!ids.has(e.target)) queue.push(e.target);
+    });
+  }
+  return ids;
+}
+
 // ── Conversion helpers ────────────────────────────────────────────────────────
 
 /**
@@ -78,6 +95,8 @@ function graphToFlow(
   inputText: string,
   onInputChange: (text: string) => void,
   selectedNodeId: string | null,
+  onCascadeHover: (nodeId: string | null) => void,
+  onRemoveCascadeNode: (nodeId: string) => void,
 ): { nodes: Node[]; edges: Edge[] } {
   // Build adjacency maps for canMoveUp/Down computation.
   const parentOf = new Map<string, string>();
@@ -118,13 +137,17 @@ function graphToFlow(
         params: n.params,
         onUpdateParam: (key: string, value: string) => onUpdateParam(n.id, key, value),
         onRemove: () => onRemoveNode(n.id),
+        onRemoveCascade: () => onRemoveCascadeNode(n.id),
         onMoveUp: () => onSwapWithParent(n.id),
         onMoveDown: () => onSwapWithChild(n.id),
         canMoveUp,
         canMoveDown,
         onSwapHover,
+        onCascadeHover,
         swapUpTargetId: canMoveUp ? parentId : undefined,
         swapDownTargetId: canMoveDown ? children[0] : undefined,
+        shiftHeld: false,
+        deletePending: false,
       },
       ariaLabel: op?.name,
     };
@@ -227,6 +250,7 @@ interface PipelineFlowEditorProps {
   onHoverLeafNode: (id: string | null) => void;
   hoveredOutputId: string | null;
   findFreePositionRef: React.MutableRefObject<FindFreePosition | undefined>;
+  onRemoveCascadeNode: (nodeId: string) => void;
 }
 
 /**
@@ -251,6 +275,7 @@ export function PipelineFlowEditor({
   onHoverLeafNode,
   hoveredOutputId,
   findFreePositionRef,
+  onRemoveCascadeNode,
 }: PipelineFlowEditorProps) {
   const { theme } = useTheme();
   const [colorMode, setColorMode] = useState<"light" | "dark">("light");
@@ -261,6 +286,20 @@ export function PipelineFlowEditor({
   }, [theme]);
 
   const [swapHoverTargetId, setSwapHoverTargetId] = useState<string | null>(null);
+  const [shiftHeld, setShiftHeld] = useState(false);
+  const [cascadeHoverSourceId, setCascadeHoverSourceId] = useState<string | null>(null);
+
+  // Track the Shift key globally so node components can react to it.
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => { if (e.key === "Shift") setShiftHeld(true); };
+    const up = (e: KeyboardEvent) => { if (e.key === "Shift") setShiftHeld(false); };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, []);
 
   const { nodes: initialNodes, edges: initialEdges } = graphToFlow(
     graph,
@@ -272,6 +311,8 @@ export function PipelineFlowEditor({
     inputText,
     onInputChange,
     selectedNodeId,
+    setCascadeHoverSourceId,
+    onRemoveCascadeNode,
   );
 
   const [rfNodes, setRFNodes, onRFNodesChange] = useNodesState<Node>(initialNodes);
@@ -296,6 +337,8 @@ export function PipelineFlowEditor({
       inputText,
       onInputChange,
       selectedNodeId,
+      setCascadeHoverSourceId,
+      onRemoveCascadeNode,
     );
     setRFNodes(nodes);
     setRFEdges(edges);
@@ -309,6 +352,7 @@ export function PipelineFlowEditor({
     selectedNodeId,
     setRFNodes,
     setRFEdges,
+    onRemoveCascadeNode,
   ]);
 
   // Update only the input node's data when inputText changes, without rebuilding all nodes.
@@ -325,6 +369,27 @@ export function PipelineFlowEditor({
       prev.map((n) => ({ ...n, data: { ...n.data, swapHighlighted: n.id === swapHoverTargetId } })),
     );
   }, [swapHoverTargetId, setRFNodes]);
+
+  // Propagate global shift-key state into each node so they can style accordingly.
+  useEffect(() => {
+    setRFNodes((prev) =>
+      prev.map((n) => ({ ...n, data: { ...n.data, shiftHeld } })),
+    );
+  }, [shiftHeld, setRFNodes]);
+
+  // When the cascade-hover source changes, mark all descendants as deletePending.
+  useEffect(() => {
+    if (!cascadeHoverSourceId) {
+      setRFNodes((prev) =>
+        prev.map((n) => ({ ...n, data: { ...n.data, deletePending: false } })),
+      );
+      return;
+    }
+    const pendingIds = getDescendantIds(cascadeHoverSourceId, rfEdges);
+    setRFNodes((prev) =>
+      prev.map((n) => ({ ...n, data: { ...n.data, deletePending: pendingIds.has(n.id) } })),
+    );
+  }, [cascadeHoverSourceId, rfEdges, setRFNodes]);
 
   // Local leaf hover (from canvas); combined with hoveredOutputId (from right panel).
   const [hoveredLocalLeafId, setHoveredLocalLeafId] = useState<string | null>(null);

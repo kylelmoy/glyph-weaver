@@ -216,6 +216,33 @@ export function usePipeline() {
   }
 
   /**
+   * Remove a node and every one of its descendants from the graph.
+   * Unlike `removeOperation`, no edge bridging is done — the entire downstream
+   * subtree is discarded.
+   */
+  function removeCascade(startId: string) {
+    if (startId === INPUT_NODE_ID) return;
+
+    // BFS from startId, following outgoing edges, to collect all descendants.
+    const toRemove = new Set<string>();
+    const queue = [startId];
+    while (queue.length > 0) {
+      const id = queue.shift()!;
+      toRemove.add(id);
+      graph.edges.filter((e) => e.source === id).forEach((e) => {
+        if (!toRemove.has(e.target)) queue.push(e.target);
+      });
+    }
+
+    if (selectedNodeId && toRemove.has(selectedNodeId)) setSelectedNodeId(null);
+
+    setGraph((prev) => ({
+      nodes: prev.nodes.filter((n) => !toRemove.has(n.id)),
+      edges: prev.edges.filter((e) => !toRemove.has(e.source) && !toRemove.has(e.target)),
+    }));
+  }
+
+  /**
    * Swap the operation and parameters of a node with those of its parent,
    * effectively moving the node one step earlier in the pipeline.
    * Does nothing if the parent is the input node.
@@ -325,6 +352,7 @@ export function usePipeline() {
     deleteSavedPipeline,
     swapWithParent,
     swapWithChild,
+    removeCascade,
     reset,
   };
 }

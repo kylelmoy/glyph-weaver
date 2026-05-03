@@ -130,6 +130,7 @@ export default function Home() {
     addOperation,
     updateParam,
     removeOperation,
+    removeCascade,
     swapWithParent,
     swapWithChild,
     savePipeline,
@@ -146,6 +147,11 @@ export default function Home() {
   const handleRemoveNode = useCallback(
     (nodeId: string) => removeOperation(nodeId),
     [removeOperation],
+  );
+
+  const handleRemoveCascadeNode = useCallback(
+    (nodeId: string) => removeCascade(nodeId),
+    [removeCascade],
   );
 
   // Populated by IntersectionHelper (rendered inside the React Flow canvas), which
@@ -406,6 +412,7 @@ export default function Home() {
             onHoverLeafNode={setHoveredLeafId}
             hoveredOutputId={hoveredOutputId}
             findFreePositionRef={findFreePositionRef}
+            onRemoveCascadeNode={handleRemoveCascadeNode}
           />
         </Column>
 
