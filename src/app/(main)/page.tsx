@@ -1,15 +1,5 @@
 import Link from "next/link";
-import {
-  Badge,
-  Button,
-  Column,
-  Grid,
-  Heading,
-  Icon,
-  Row,
-  Tag,
-  Text,
-} from "@once-ui-system/core";
+import { Badge, Button, Column, Grid, Heading, Icon, Row, Tag, Text } from "@once-ui-system/core";
 import { Logo } from "@/components/Logo";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -37,7 +27,6 @@ const FEATURES = [
 export default function Home() {
   return (
     <Column fillWidth style={{ height: "100dvh", overflow: "hidden" }}>
-
       {/* ── Nav ─────────────────────────────────────────────────────────── */}
       <Row
         fillWidth
@@ -69,10 +58,11 @@ export default function Home() {
       >
         {/* Headline block */}
         <Column horizontal="center" gap="32" style={{ maxWidth: 640 }}>
-
           <Column horizontal="center" gap="16">
             <Heading as="h1" variant="display-strong-l" align="center">
-              Transform text,<br />visually.
+              Transform text,
+              <br />
+              visually.
             </Heading>
             <Text
               variant="body-default-l"
@@ -80,8 +70,8 @@ export default function Home() {
               align="center"
               style={{ maxWidth: 520 }}
             >
-              Chain sorting, filtering, formatting, and custom operations on a
-              visual drag-and-drop canvas. Results update live as you type.
+              Chain sorting, filtering, formatting, and custom operations on a visual drag-and-drop
+              canvas. Results update live as you type.
             </Text>
           </Column>
 
@@ -91,12 +81,7 @@ export default function Home() {
         </Column>
 
         {/* Feature grid */}
-        <Grid
-          columns="3"
-          s={{ columns: 1 }}
-          gap="16"
-          style={{ maxWidth: 900, width: "100%" }}
-        >
+        <Grid columns="3" s={{ columns: 1 }} gap="16" style={{ maxWidth: 900, width: "100%" }}>
           {FEATURES.map((feature) => (
             <Column
               key={feature.title}

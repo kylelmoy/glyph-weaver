@@ -168,7 +168,7 @@ export default function Home() {
     setInputText("");
     try {
       localStorage.removeItem("glyph-weaver-session-input");
-    } catch { }
+    } catch {}
   };
 
   const [hoveredLeafId, setHoveredLeafId] = useState<string | null>(null);
@@ -177,10 +177,10 @@ export default function Home() {
   const searchQuery = operationSearch.trim().toLowerCase();
   const filteredOps = searchQuery
     ? OPERATIONS.filter(
-      (op) =>
-        op.name.toLowerCase().includes(searchQuery) ||
-        op.description.toLowerCase().includes(searchQuery),
-    )
+        (op) =>
+          op.name.toLowerCase().includes(searchQuery) ||
+          op.description.toLowerCase().includes(searchQuery),
+      )
     : null;
 
   return (
@@ -421,9 +421,7 @@ export default function Home() {
           {/* Scrollable output */}
           <Column gap="m" padding="m" style={{ flex: 1, overflowY: "auto" }}>
             <Column gap="xs">
-              <Heading as="h3">
-                Output
-              </Heading>
+              <Heading as="h3">Output</Heading>
               {outputs.length === 1 ? (
                 <>
                   <Textarea
