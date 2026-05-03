@@ -70,7 +70,7 @@ const meta = {
     path: "/",
     title: "glyph-weaver by kyle moy",
     description: "A web-based tool for manipulating text.",
-    image: "/images/og/home.jpg",
+    image: "/images/og/og_image.jpg",
     canonical: "https://glyph.kylelmoy.com",
     robots: "index,follow",
     alternates: [{ href: "https://glyph.kylelmoy.com", hrefLang: "en" }],

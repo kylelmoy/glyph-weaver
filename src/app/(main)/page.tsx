@@ -69,20 +69,6 @@ export default function Home() {
       >
         {/* Headline block */}
         <Column horizontal="center" gap="32" style={{ maxWidth: 640 }}>
-          <Badge
-            id="hero-badge"
-            paddingY="4"
-            paddingLeft="4"
-            paddingRight="16"
-            radius="full"
-            gap="8"
-            border="neutral-alpha-medium"
-            background="neutral-alpha-weak"
-            textVariant="label-default-s"
-          >
-            <Tag variant="gradient">New</Tag>
-            Text manipulation, reimagined
-          </Badge>
 
           <Column horizontal="center" gap="16">
             <Heading as="h1" variant="display-strong-l" align="center">
@@ -99,7 +85,7 @@ export default function Home() {
             </Text>
           </Column>
 
-          <Button href="/app" size="l" suffixIcon="arrowUpRight">
+          <Button id="get-started" href="/app" size="l" arrowIcon>
             Get started
           </Button>
         </Column>
