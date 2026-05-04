@@ -5,6 +5,7 @@ import {
   Controls,
   ReactFlow,
   addEdge,
+  reconnectEdge,
   useEdgesState,
   useNodesState,
   useReactFlow,
@@ -559,6 +560,31 @@ export function PipelineFlowEditor({
     [setRFEdges, rfEdges, rfNodes, graph, onGraphChange],
   );
 
+  const onReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      const newEdges = reconnectEdge(oldEdge, newConnection, rfEdges);
+      setRFEdges(newEdges);
+      const newGraph = flowToGraph(rfNodes, newEdges);
+      prevGraphRef.current = newGraph;
+      onGraphChange(newGraph);
+    },
+    [rfEdges, rfNodes, onGraphChange, setRFEdges],
+  );
+
+  const onReconnectEnd = useCallback(
+    (_event: unknown, edge: Edge, _handleType: unknown, connectionState: { isValid: boolean | null }) => {
+      if (!connectionState.isValid) {
+        // Edge was dropped in empty space — remove it.
+        const newEdges = rfEdges.filter((e) => e.id !== edge.id);
+        setRFEdges(newEdges);
+        const newGraph = flowToGraph(rfNodes, newEdges);
+        prevGraphRef.current = newGraph;
+        onGraphChange(newGraph);
+      }
+    },
+    [rfEdges, rfNodes, onGraphChange, setRFEdges],
+  );
+
   const isValidConnection: IsValidConnection = useCallback(
     (connection) => {
       // Input nodes (all types) cannot be connection targets.
@@ -588,6 +614,8 @@ export function PipelineFlowEditor({
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onConnect={onConnect}
+        onReconnect={onReconnect}
+        onReconnectEnd={onReconnectEnd}
         isValidConnection={isValidConnection}
         onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
