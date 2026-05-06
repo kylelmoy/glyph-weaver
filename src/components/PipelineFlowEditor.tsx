@@ -250,7 +250,8 @@ type FindFreePosition = (pos: Position, nudgeRight: boolean) => Position;
 const NODE_W = 280; // matches maxWidth
 const NODE_H = 120; // approximates height with one param input
 
-const NUDGE_STEP = NODE_H + 20; // step when searching for a free position
+const NUDGE_STEP_X = NODE_W + 40; // horizontal step (right nudge, legacy use)
+const NUDGE_STEP_Y = NODE_H + 20; // vertical step (down nudge, default for L-to-R layout)
 
 /**
  * A render-null component that lives inside `<ReactFlow>` (giving it access to
@@ -277,9 +278,9 @@ function IntersectionHelper({
       );
       if (hits.length === 0) return candidate;
       if (nudgeRight) {
-        candidate = { ...candidate, x: candidate.x + NUDGE_STEP };
+        candidate = { ...candidate, x: candidate.x + NUDGE_STEP_X };
       } else {
-        candidate = { ...candidate, y: candidate.y + NUDGE_STEP };
+        candidate = { ...candidate, y: candidate.y + NUDGE_STEP_Y };
       }
     }
     return candidate;

@@ -22,10 +22,10 @@ import { useEffect, useRef, useState } from "react";
 const STORAGE_KEY = "glyph-weaver-pipelines";
 const SESSION_KEY = "glyph-weaver-session";
 
-// Vertical canvas spacing when placing a new node below its parent.
-// INPUT_CHILD_Y_OFFSET is larger to account for the input node's textarea height.
-const INPUT_CHILD_Y_OFFSET = 300;
-const OP_CHILD_Y_OFFSET = 130;
+// Horizontal canvas spacing when placing a new node to the right of its parent.
+// INPUT_CHILD_X_OFFSET is larger to account for the input node's textarea width.
+const INPUT_CHILD_X_OFFSET = 380;
+const OP_CHILD_X_OFFSET = 320;
 
 const INITIAL_INPUT_NODE: PipelineNode = {
   id: INPUT_NODE_ID,
@@ -150,15 +150,14 @@ export function usePipeline() {
       graph.nodes.find((n) => n.id === parentId) ??
       graph.nodes.find((n) => n.id === INPUT_NODE_ID)!;
 
-    const isInputParent = parent.id === INPUT_NODE_ID;
+    const isInputParent = parent.operationId === INPUT_NODE_ID;
     let position = {
-      x: parent.position.x,
-      y: parent.position.y + (isInputParent ? INPUT_CHILD_Y_OFFSET : OP_CHILD_Y_OFFSET),
+      x: parent.position.x + (isInputParent ? INPUT_CHILD_X_OFFSET : OP_CHILD_X_OFFSET),
+      y: parent.position.y,
     };
 
     if (findFreePosition) {
-      const parentHasChildren = graph.edges.some((e) => e.source === parentId);
-      position = findFreePosition(position, parentHasChildren);
+      position = findFreePosition(position, false); // nudge down to stack siblings
     }
 
     setGraph((prev) => {
@@ -191,12 +190,12 @@ export function usePipeline() {
     const primaryInput = graph.nodes.find((n) => n.id === INPUT_NODE_ID)!;
 
     let position = {
-      x: primaryInput.position.x + 320,
-      y: primaryInput.position.y,
+      x: primaryInput.position.x,
+      y: primaryInput.position.y + 200,
     };
 
     if (findFreePosition) {
-      position = findFreePosition(position, true);
+      position = findFreePosition(position, false); // nudge down to stack additional inputs
     }
 
     setGraph((prev) => ({
@@ -227,7 +226,7 @@ export function usePipeline() {
       : { x: 0, y: 300 };
 
     if (findFreePosition) {
-      position = findFreePosition(position, true);
+      position = findFreePosition(position, false); // nudge down to avoid overlap
     }
 
     setGraph((prev) => {

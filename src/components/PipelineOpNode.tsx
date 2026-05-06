@@ -89,39 +89,47 @@ export function PipelineOpNode({ id, data, selected }: NodeProps) {
         borderRadius: "var(--radius-m)",
         minWidth: 200,
         maxWidth: 280,
+        position: "relative",
       }}
     >
       {nodeData.multiInput ? (
         <>
-          <Handle
-            type="target"
-            id="a"
-            position={Position.Top}
-            style={{ left: "30%" }}
-          />
-          <Handle
-            type="target"
-            id="b"
-            position={Position.Top}
-            style={{ left: "70%" }}
-          />
+          <Handle type="target" id="a" position={Position.Left} style={{ top: "35%" }} />
+          <span
+            style={{
+              position: "absolute",
+              left: 8,
+              top: "35%",
+              transform: "translateY(-50%)",
+              fontSize: 10,
+              fontWeight: 600,
+              opacity: 0.5,
+              pointerEvents: "none",
+            }}
+          >
+            A
+          </span>
+          <Handle type="target" id="b" position={Position.Left} style={{ top: "65%" }} />
+          <span
+            style={{
+              position: "absolute",
+              left: 8,
+              top: "65%",
+              transform: "translateY(-50%)",
+              fontSize: 10,
+              fontWeight: 600,
+              opacity: 0.5,
+              pointerEvents: "none",
+            }}
+          >
+            B
+          </span>
         </>
       ) : (
-        <Handle type="target" position={Position.Top} isConnectableStart={false} />
+        <Handle type="target" position={Position.Left} isConnectableStart={false} />
       )}
 
-      <Column gap="xs" padding="s">
-        {nodeData.multiInput && (
-          <Row horizontal="between" style={{ paddingBottom: 2 }}>
-            <Text variant="body-default-xs" onBackground="neutral-weak">
-              A
-            </Text>
-            <Text variant="body-default-xs" onBackground="neutral-weak">
-              B
-            </Text>
-          </Row>
-        )}
-
+      <Column gap="xs" padding="s" style={nodeData.multiInput ? { paddingLeft: "1.5rem" } : undefined}>
         <Row gap="s" vertical="center" horizontal="between">
           <Text variant="label-strong-s" title={op.description}>
             {op.name}
@@ -182,7 +190,7 @@ export function PipelineOpNode({ id, data, selected }: NodeProps) {
         ))}
       </Column>
 
-      <Handle type="source" position={Position.Bottom} />
+      <Handle type="source" position={Position.Right} />
     </div>
   );
 }

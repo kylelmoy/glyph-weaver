@@ -83,7 +83,7 @@ export function PipelineInputNode({ id, data, selected }: NodeProps) {
         )}
       </Column>
 
-      <Handle type="source" position={Position.Bottom} />
+      <Handle type="source" position={Position.Right} />
     </div>
   );
 }

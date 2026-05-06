@@ -35,7 +35,7 @@ export function PipelineOutputNode({ id, data, selected }: NodeProps) {
         maxWidth: 280,
       }}
     >
-      <Handle type="target" position={Position.Top} isConnectableStart={false} />
+      <Handle type="target" position={Position.Left} isConnectableStart={false} />
 
       <Column gap="xs" padding="s">
         <Row gap="s" vertical="center" horizontal="between">
@@ -59,7 +59,7 @@ export function PipelineOutputNode({ id, data, selected }: NodeProps) {
         />
       </Column>
 
-      <Handle type="source" position={Position.Bottom} isConnectableStart={false} />
+      <Handle type="source" position={Position.Right} isConnectableStart={false} />
     </div>
   );
 }
