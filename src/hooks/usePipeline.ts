@@ -30,7 +30,7 @@ const OP_CHILD_X_OFFSET = 320;
 const INITIAL_INPUT_NODE: PipelineNode = {
   id: INPUT_NODE_ID,
   operationId: INPUT_NODE_ID,
-  params: { text: "" },
+  params: { text: "Kassidy Graves\nCesar Merritt\nKaisley O’Connell\nJovanni Evans\nEliana Compton\nAbner Norton\nKylee Corona\nDarian Jefferson\nJulieta Vincent" },
   position: { x: 0, y: 0 },
 };
 

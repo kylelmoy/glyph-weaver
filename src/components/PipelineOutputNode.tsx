@@ -23,7 +23,7 @@ export function PipelineOutputNode({ id, data, selected }: NodeProps) {
   const text = nodeData.text ?? "";
 
   const borderColor =
-    selected || isHighlighted ? "var(--brand-solid-strong)" : "var(--accent-alpha-medium)";
+    selected || isHighlighted ? "var(--brand-solid-strong)" : "var(--neutral-alpha-medium)";
 
   const background = isHighlighted ? "var(--accent-alpha-weak)" : "var(--background-page)";
 
