@@ -34,6 +34,18 @@ const INITIAL_INPUT_NODE: PipelineNode = {
   position: { x: 0, y: 0 },
 };
 
+const INITIAL_GRAPH: PipelineGraph = {
+  nodes: [
+    INITIAL_INPUT_NODE,
+    { id: "0", operationId: "sort-alpha", params: {}, position: { x: INPUT_CHILD_X_OFFSET, y: 0 } },
+    { id: "1", operationId: OUTPUT_NODE_ID, params: { label: "" }, position: { x: INPUT_CHILD_X_OFFSET + OP_CHILD_X_OFFSET, y: 0 } },
+  ],
+  edges: [
+    { id: `e-${INPUT_NODE_ID}-0`, source: INPUT_NODE_ID, target: "0" },
+    { id: "e-0-1", source: "0", target: "1" },
+  ],
+};
+
 /**
  * Ensure the graph always contains the reserved input node.
  * If it is missing (e.g. after loading a legacy save), it is prepended and
@@ -71,16 +83,13 @@ function computeNextId(g: PipelineGraph): number {
 }
 
 export function usePipeline() {
-  const [graph, setGraph] = useState<PipelineGraph>({
-    nodes: [INITIAL_INPUT_NODE],
-    edges: [],
-  });
+  const [graph, setGraph] = useState<PipelineGraph>(INITIAL_GRAPH);
   const [pipelineName, setPipelineName] = useState("");
   const [savedPipelines, setSavedPipelines] = useState<SavedPipelineV2[]>([]);
   const [showSaved, setShowSaved] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
-  const nextId = useRef(0);
+  const nextId = useRef(computeNextId(INITIAL_GRAPH));
   // Counts how many times the auto-save effect has fired.
   // We skip the very first firing to avoid overwriting a restored session with
   // the bare initial graph that exists before localStorage has been read.
@@ -394,10 +403,10 @@ export function usePipeline() {
 
   /** Reset the active graph to its initial state and clear the session. */
   function reset() {
-    setGraph({ nodes: [INITIAL_INPUT_NODE], edges: [] });
+    setGraph(INITIAL_GRAPH);
     setPipelineName("");
     setSelectedNodeId(null);
-    nextId.current = 0;
+    nextId.current = computeNextId(INITIAL_GRAPH);
     try {
       localStorage.removeItem(SESSION_KEY);
     } catch {
