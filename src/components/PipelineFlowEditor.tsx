@@ -563,7 +563,15 @@ export function PipelineFlowEditor({
 
   const onConnect: OnConnect = useCallback(
     (connection: Connection) => {
-      const newEdges = addEdge(connection, rfEdges);
+      const targetNode = rfNodes.find((n) => n.id === connection.target);
+      const targetData = targetNode?.data as OpNodeData | undefined;
+      // Displace any existing edge going to the same target/handle before adding the new one.
+      const displaced = rfEdges.filter((e) => {
+        if (e.target !== connection.target) return true;
+        if (targetData?.multiInput) return e.targetHandle !== connection.targetHandle;
+        return false;
+      });
+      const newEdges = addEdge(connection, displaced);
       setRFEdges(newEdges);
       const newGraph = flowToGraph(rfNodes, newEdges);
       prevGraphRef.current = newGraph;
@@ -574,7 +582,16 @@ export function PipelineFlowEditor({
 
   const onReconnect = useCallback(
     (oldEdge: Edge, newConnection: Connection) => {
-      const newEdges = reconnectEdge(oldEdge, newConnection, rfEdges);
+      const targetNode = rfNodes.find((n) => n.id === newConnection.target);
+      const targetData = targetNode?.data as OpNodeData | undefined;
+      // Displace any existing edge on the new target/handle (other than the edge being moved).
+      const displaced = rfEdges.filter((e) => {
+        if (e.id === oldEdge.id) return true;
+        if (e.target !== newConnection.target) return true;
+        if (targetData?.multiInput) return e.targetHandle !== newConnection.targetHandle;
+        return false;
+      });
+      const newEdges = reconnectEdge(oldEdge, newConnection, displaced);
       setRFEdges(newEdges);
       const newGraph = flowToGraph(rfNodes, newEdges);
       prevGraphRef.current = newGraph;
@@ -599,23 +616,14 @@ export function PipelineFlowEditor({
 
   const isValidConnection: IsValidConnection = useCallback(
     (connection) => {
-      // Input nodes (all types) cannot be connection targets.
+      // Input nodes cannot be connection targets.
       const targetNode = rfNodes.find((n) => n.id === connection.target);
       if (targetNode?.type === "pipeline-input") return false;
+      // No self-loops.
       if (connection.source === connection.target) return false;
-
-      // Set op nodes: check per-handle uniqueness (one edge per handle).
-      const targetData = targetNode?.data as OpNodeData | undefined;
-      if (targetData?.multiInput) {
-        return !rfEdges.some(
-          (e) => e.target === connection.target && e.targetHandle === connection.targetHandle,
-        );
-      }
-
-      // All other nodes: only one incoming edge allowed.
-      return !rfEdges.some((e) => e.target === connection.target);
+      return true;
     },
-    [rfNodes, rfEdges],
+    [rfNodes],
   );
 
   return (
