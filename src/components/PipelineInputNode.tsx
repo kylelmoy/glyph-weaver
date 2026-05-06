@@ -63,6 +63,7 @@ export function PipelineInputNode({ id, data, selected }: NodeProps) {
               lines={5}
               resize="both"
               className="nodrag nowheel"
+              style={{ fontFamily: "monospace", fontSize: "12px", lineHeight: "normal", minHeight: "300px", minWidth: "200px" }}
             />
             <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
               {nodeData.text.length} chars ·{" "}
