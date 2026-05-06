@@ -12,8 +12,7 @@ import { Logo } from "@/components/Logo";
 import { PipelineFlowEditor } from "@/components/PipelineFlowEditor";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { usePipeline } from "@/hooks/usePipeline";
-import { INPUT_NODE_ID, OUTPUT_NODE_ID, processGraph } from "@/lib/pipelineGraph";
-import type { GraphOutput } from "@/lib/pipelineGraph";
+import { INPUT_NODE_ID, processGraph } from "@/lib/pipelineGraph";
 import { OPERATIONS, OPERATION_CATEGORIES } from "@/lib/operations";
 import type { OperationDefinition } from "@/lib/operations";
 import {
@@ -26,7 +25,6 @@ import {
   Line,
   Row,
   Text,
-  Textarea,
 } from "@once-ui-system/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -174,15 +172,6 @@ export default function Home() {
 
   const outputs = useMemo(() => processGraph(inputText, graph), [inputText, graph]);
 
-  const outputNodeIds = useMemo(
-    () => new Set(graph.nodes.filter((n) => n.operationId === OUTPUT_NODE_ID).map((n) => n.id)),
-    [graph],
-  );
-  const panelOutputs = useMemo(
-    () => outputs.filter((o) => !outputNodeIds.has(o.id)),
-    [outputs, outputNodeIds],
-  );
-
   const handleReset = () => {
     reset();
     setInputText("");
@@ -191,8 +180,6 @@ export default function Home() {
     } catch {}
   };
 
-  const [hoveredLeafId, setHoveredLeafId] = useState<string | null>(null);
-  const [hoveredOutputId, setHoveredOutputId] = useState<string | null>(null);
   const [operationSearch, setOperationSearch] = useState("");
   const searchQuery = operationSearch.trim().toLowerCase();
   const filteredOps = searchQuery
@@ -434,7 +421,7 @@ export default function Home() {
         </Column>
 
         {/* ── Center: Flow canvas ── */}
-        <Column style={{ flex: 1, overflow: "hidden", minWidth: 0 }}>
+        <Column style={{ flex: 1, overflow: "hidden", minWidth: 0, position: "relative" }}>
           <PipelineFlowEditor
             graph={graph}
             onGraphChange={setGraph}
@@ -446,89 +433,15 @@ export default function Home() {
             onInputChange={setInputText}
             selectedNodeId={selectedNodeId}
             onSelectNode={setSelectedNodeId}
-            onHoverLeafNode={setHoveredLeafId}
-            hoveredOutputId={hoveredOutputId}
             findFreePositionRef={findFreePositionRef}
             onRemoveCascadeNode={handleRemoveCascadeNode}
             outputs={outputs}
           />
-        </Column>
-
-        {/* ── Right: Input / Output ── */}
-        <Column
-          style={{
-            width: 300,
-            flexShrink: 0,
-            borderLeft: "1px solid var(--neutral-alpha-medium)",
-            overflow: "hidden",
-          }}
-        >
-          {/* Scrollable output */}
-          <Column gap="m" padding="m" style={{ flex: 1, overflowY: "auto" }}>
-            <Column gap="xs">
-              <Heading as="h3">Output</Heading>
-              {panelOutputs.length === 0 ? null : panelOutputs.length === 1 ? (
-                <>
-                  {panelOutputs[0].label && (
-                    <Text variant="label-default-xs" onBackground="neutral-weak">
-                      {panelOutputs[0].label}
-                    </Text>
-                  )}
-                  <Textarea
-                    id="output"
-                    value={panelOutputs[0].text}
-                    readOnly
-                    lines={8}
-                    resize="vertical"
-                    style={{
-                      background:
-                        hoveredLeafId === panelOutputs[0].id ? "var(--accent-alpha-weak)" : undefined,
-                      transition: "background 0.15s",
-                    }}
-                    onMouseEnter={() => setHoveredOutputId(panelOutputs[0].id)}
-                    onMouseLeave={() => setHoveredOutputId(null)}
-                  />
-                  <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
-                    {panelOutputs[0].text.length} chars ·{" "}
-                    {panelOutputs[0].text === "" ? 0 : panelOutputs[0].text.split("\n").length} lines
-                  </Text>
-                </>
-              ) : (
-                panelOutputs.map((out: GraphOutput, i: number) => (
-                  <Column key={out.id} gap="xs">
-                    <Text variant="label-default-xs" onBackground="neutral-weak">
-                      {out.label ?? `Output ${i + 1}`}
-                    </Text>
-                    <Textarea
-                      id={`output-${out.id}`}
-                      value={out.text}
-                      readOnly
-                      resize="vertical"
-                      lines={4}
-                      style={{
-                        background:
-                          hoveredLeafId === out.id ? "var(--accent-alpha-weak)" : undefined,
-                        transition: "background 0.15s",
-                      }}
-                      onMouseEnter={() => setHoveredOutputId(out.id)}
-                      onMouseLeave={() => setHoveredOutputId(null)}
-                    />
-                    <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
-                      {out.text.length} chars · {out.text === "" ? 0 : out.text.split("\n").length}{" "}
-                      lines
-                    </Text>
-                  </Column>
-                ))
-              )}
-            </Column>
-          </Column>
-
-          {/* Pinned footer */}
           <Row
             horizontal="center"
             gap="8"
             paddingY="s"
-            style={{ borderTop: "1px solid var(--neutral-alpha-medium)", flexShrink: 0 }}
+            style={{ position: "absolute", bottom: 0, left: 0, right: 0, pointerEvents: "none" }}
           >
             <IconButton
               href="https://github.com/kylelmoy/glyph-weaver"
@@ -536,6 +449,7 @@ export default function Home() {
               tooltip="kylelmoy/glyph-weaver on GitHub"
               size="s"
               variant="ghost"
+              style={{ pointerEvents: "auto" }}
             />
             <IconButton
               href="https://www.linkedin.com/in/kylelmoy/"
@@ -543,6 +457,7 @@ export default function Home() {
               tooltip="Kyle Moy on LinkedIn"
               size="s"
               variant="ghost"
+              style={{ pointerEvents: "auto" }}
             />
             <IconButton
               href="https://www.kylelmoy.com"
@@ -550,9 +465,11 @@ export default function Home() {
               tooltip="Kyle Moy's Bio"
               size="s"
               variant="ghost"
+              style={{ pointerEvents: "auto" }}
             />
           </Row>
         </Column>
+
       </Row>
     </Column>
   );

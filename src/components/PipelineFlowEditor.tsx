@@ -30,7 +30,7 @@ import type { GraphOutput, PipelineGraph } from "@/lib/pipelineGraph";
 import { INPUT_NODE_ID, OUTPUT_NODE_ID } from "@/lib/pipelineGraph";
 import { OPERATIONS } from "@/lib/operations";
 import { useTheme } from "@once-ui-system/core";
-import { useCallback, useEffect, useRef, useState, type MouseEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // Node type map is defined outside the component so React Flow receives a stable
 // reference and does not remount nodes on every parent re-render.
@@ -39,29 +39,6 @@ const NODE_TYPES = {
   "pipeline-input": PipelineInputNode,
   "pipeline-output": PipelineOutputNode,
 };
-
-/**
- * Walk the edge list backwards from `startId` using BFS, collecting every
- * ancestor node ID and the connecting edge IDs along the way. Handles fan-in
- * (set operation nodes with two parents).
- */
-function getAncestorPath(
-  startId: string,
-  edges: Edge[],
-): { nodeIds: Set<string>; edgeIds: Set<string> } {
-  const nodeIds = new Set<string>();
-  const edgeIds = new Set<string>();
-  const queue = [startId];
-  while (queue.length > 0) {
-    const current = queue.shift()!;
-    nodeIds.add(current);
-    for (const parentEdge of edges.filter((e) => e.target === current)) {
-      edgeIds.add(parentEdge.id);
-      if (!nodeIds.has(parentEdge.source)) queue.push(parentEdge.source);
-    }
-  }
-  return { nodeIds, edgeIds };
-}
 
 export type OpNode = Node<OpNodeData, "op">;
 
@@ -301,8 +278,6 @@ interface PipelineFlowEditorProps {
   onInputChange: (text: string) => void;
   selectedNodeId: string | null;
   onSelectNode: (id: string | null) => void;
-  onHoverLeafNode: (id: string | null) => void;
-  hoveredOutputId: string | null;
   findFreePositionRef: React.MutableRefObject<FindFreePosition | undefined>;
   onRemoveCascadeNode: (nodeId: string) => void;
   outputs: GraphOutput[];
@@ -319,8 +294,6 @@ export function PipelineFlowEditor({
   onInputChange,
   selectedNodeId,
   onSelectNode,
-  onHoverLeafNode,
-  hoveredOutputId,
   findFreePositionRef,
   onRemoveCascadeNode,
   outputs,
@@ -446,32 +419,6 @@ export function PipelineFlowEditor({
     );
   }, [cascadeHoverSourceId, rfEdges, setRFNodes]);
 
-  // Local leaf hover (from canvas); combined with hoveredOutputId (from right panel).
-  const [hoveredLocalLeafId, setHoveredLocalLeafId] = useState<string | null>(null);
-  const activeLeafId = hoveredLocalLeafId ?? hoveredOutputId;
-
-  // Highlight the full ancestor path (nodes + edges) for the active leaf.
-  useEffect(() => {
-    if (!activeLeafId) {
-      setRFNodes((prev) => prev.map((n) => ({ ...n, data: { ...n.data, highlighted: false } })));
-      setRFEdges((prev) => prev.map((e) => ({ ...e, animated: false, style: undefined })));
-      return;
-    }
-    const { nodeIds, edgeIds } = getAncestorPath(activeLeafId, graph.edges);
-    setRFNodes((prev) =>
-      prev.map((n) => ({ ...n, data: { ...n.data, highlighted: nodeIds.has(n.id) } })),
-    );
-    setRFEdges((prev) =>
-      prev.map((e) => ({
-        ...e,
-        animated: edgeIds.has(e.id),
-        style: edgeIds.has(e.id)
-          ? { stroke: "var(--brand-solid-strong)", strokeWidth: 2 }
-          : undefined,
-      })),
-    );
-  }, [activeLeafId, graph.edges, setRFNodes, setRFEdges]);
-
   const handleNodesChange: OnNodesChange<Node> = useCallback(
     (changes) => {
       onRFNodesChange(changes);
@@ -517,31 +464,17 @@ export function PipelineFlowEditor({
   );
 
   const handleNodeClick = useCallback(
-    (_e: MouseEvent, node: Node) => onSelectNode(node.id),
+    (_e: unknown, node: Node) => onSelectNode(node.id),
+    [onSelectNode],
+  );
+
+  // Sync selection when a node is dragged without a prior click.
+  const handleNodeDragStart = useCallback(
+    (_e: unknown, node: Node) => onSelectNode(node.id),
     [onSelectNode],
   );
 
   const handlePaneClick = useCallback(() => onSelectNode(null), [onSelectNode]);
-
-  const handleNodeMouseEnter = useCallback(
-    (_e: MouseEvent, node: Node) => {
-      // Input nodes are roots; they don't have output panel entries.
-      if (node.type === "pipeline-input") return;
-      // Output tap nodes are always in the output panel.
-      const isOutputTap = node.type === "pipeline-output";
-      const isLeaf = !rfEdges.some((e) => e.source === node.id);
-      if (isLeaf || isOutputTap) {
-        setHoveredLocalLeafId(node.id);
-        onHoverLeafNode(node.id);
-      }
-    },
-    [rfEdges, onHoverLeafNode],
-  );
-
-  const handleNodeMouseLeave = useCallback(() => {
-    setHoveredLocalLeafId(null);
-    onHoverLeafNode(null);
-  }, [onHoverLeafNode]);
 
   const handleEdgesChange: OnEdgesChange = useCallback(
     (changes) => {
@@ -638,9 +571,8 @@ export function PipelineFlowEditor({
         onReconnectEnd={onReconnectEnd}
         isValidConnection={isValidConnection}
         onNodeClick={handleNodeClick}
+        onNodeDragStart={handleNodeDragStart}
         onPaneClick={handlePaneClick}
-        onNodeMouseEnter={handleNodeMouseEnter}
-        onNodeMouseLeave={handleNodeMouseLeave}
         nodeTypes={NODE_TYPES}
         multiSelectionKeyCode={null}
         fitView

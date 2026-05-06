@@ -45,6 +45,13 @@ export function PipelineInputNode({ id, data, selected }: NodeProps) {
         <Row vertical="center" horizontal="between">
           <Text variant="label-strong-s">Input</Text>
           <Row gap="2">
+            <IconButton
+              icon={collapsed ? "maximize" : "minimize"}
+              size="s"
+              variant="ghost"
+              tooltip={collapsed ? "Expand" : "Collapse"}
+              onClick={() => setCollapsed((c) => !c)}
+            />
             {!isPrimary && nodeData.onRemove && (
               <IconButton
                 icon="close"
@@ -54,13 +61,6 @@ export function PipelineInputNode({ id, data, selected }: NodeProps) {
                 onClick={nodeData.onRemove}
               />
             )}
-            <IconButton
-              icon={collapsed ? "maximize" : "minimize"}
-              size="s"
-              variant="ghost"
-              tooltip={collapsed ? "Expand" : "Collapse"}
-              onClick={() => setCollapsed((c) => !c)}
-            />
           </Row>
         </Row>
 
