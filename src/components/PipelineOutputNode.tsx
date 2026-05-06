@@ -64,7 +64,7 @@ export function PipelineOutputNode({ id, data, selected }: NodeProps) {
         </Text>
       </Column>
 
-      <Handle type="source" position={Position.Right} isConnectableStart={false} />
+      <Handle type="source" position={Position.Right} />
     </div>
   );
 }

@@ -2,6 +2,7 @@
 
 import {
   Background,
+  BackgroundVariant,
   Controls,
   ReactFlow,
   addEdge,
@@ -219,8 +220,8 @@ type FindFreePosition = (pos: Position, nudgeRight: boolean) => Position;
 const NODE_W = 280; // matches maxWidth
 const NODE_H = 120; // approximates height with one param input
 
-const NUDGE_STEP_X = NODE_W + 40; // horizontal step (right nudge, legacy use)
-const NUDGE_STEP_Y = NODE_H + 20; // vertical step (down nudge, default for L-to-R layout)
+const NUDGE_STEP_X = 350; // horizontal step (right nudge) — multiple of 50 snap grid
+const NUDGE_STEP_Y = 150; // vertical step (down nudge) — multiple of 50 snap grid
 
 /**
  * A render-null component that lives inside `<ReactFlow>` (giving it access to
@@ -554,8 +555,10 @@ export function PipelineFlowEditor({
         fitView
         deleteKeyCode="Delete"
         colorMode={colorMode}
+        snapToGrid
+        snapGrid={[50, 50]}
       >
-        <Background />
+        <Background variant={BackgroundVariant.Dots} gap={25} />
         <Controls />
         <IntersectionHelper findFreePositionRef={findFreePositionRef} />
       </ReactFlow>

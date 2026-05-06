@@ -23,9 +23,9 @@ const STORAGE_KEY = "glyph-weaver-pipelines";
 const SESSION_KEY = "glyph-weaver-session";
 
 // Horizontal canvas spacing when placing a new node to the right of its parent.
-// INPUT_CHILD_X_OFFSET is larger to account for the input node's textarea width.
-const INPUT_CHILD_X_OFFSET = 380;
-const OP_CHILD_X_OFFSET = 320;
+// Both values are multiples of 50 to align with the canvas snap grid.
+const INPUT_CHILD_X_OFFSET = 400;
+const OP_CHILD_X_OFFSET = 350;
 
 const INITIAL_INPUT_NODE: PipelineNode = {
   id: INPUT_NODE_ID,
@@ -292,7 +292,7 @@ export function usePipeline() {
     const parent = parentId ? graph.nodes.find((n) => n.id === parentId) : null;
 
     let position = parent
-      ? { x: parent.position.x + 320, y: parent.position.y }
+      ? { x: parent.position.x + OP_CHILD_X_OFFSET, y: parent.position.y }
       : { x: 0, y: 300 };
 
     if (findFreePosition) {
