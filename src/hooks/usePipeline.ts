@@ -38,7 +38,7 @@ const INITIAL_GRAPH: PipelineGraph = {
   nodes: [
     INITIAL_INPUT_NODE,
     { id: "0", operationId: "sort-alpha", params: {}, position: { x: INPUT_CHILD_X_OFFSET, y: 0 } },
-    { id: "1", operationId: OUTPUT_NODE_ID, params: { label: "" }, position: { x: INPUT_CHILD_X_OFFSET + OP_CHILD_X_OFFSET, y: 0 } },
+    { id: "1", operationId: OUTPUT_NODE_ID, params: {}, position: { x: INPUT_CHILD_X_OFFSET + OP_CHILD_X_OFFSET, y: 0 } },
   ],
   edges: [
     { id: `e-${INPUT_NODE_ID}-0`, source: INPUT_NODE_ID, target: "0" },
@@ -242,7 +242,7 @@ export function usePipeline() {
       const newNode: PipelineNode = {
         id: newId,
         operationId: OUTPUT_NODE_ID,
-        params: { label: "" },
+        params: {},
         position,
       };
       const edges = [...prev.edges];

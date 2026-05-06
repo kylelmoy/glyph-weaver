@@ -12,7 +12,7 @@ import { Logo } from "@/components/Logo";
 import { PipelineFlowEditor } from "@/components/PipelineFlowEditor";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { usePipeline } from "@/hooks/usePipeline";
-import { INPUT_NODE_ID, processGraph } from "@/lib/pipelineGraph";
+import { INPUT_NODE_ID, OUTPUT_NODE_ID, processGraph } from "@/lib/pipelineGraph";
 import type { GraphOutput } from "@/lib/pipelineGraph";
 import { OPERATIONS, OPERATION_CATEGORIES } from "@/lib/operations";
 import type { OperationDefinition } from "@/lib/operations";
@@ -173,6 +173,15 @@ export default function Home() {
   const handleAddOutputNode = () => addOutputNode(findFreePositionRef.current);
 
   const outputs = useMemo(() => processGraph(inputText, graph), [inputText, graph]);
+
+  const outputNodeIds = useMemo(
+    () => new Set(graph.nodes.filter((n) => n.operationId === OUTPUT_NODE_ID).map((n) => n.id)),
+    [graph],
+  );
+  const panelOutputs = useMemo(
+    () => outputs.filter((o) => !outputNodeIds.has(o.id)),
+    [outputs, outputNodeIds],
+  );
 
   const handleReset = () => {
     reset();
@@ -441,6 +450,7 @@ export default function Home() {
             hoveredOutputId={hoveredOutputId}
             findFreePositionRef={findFreePositionRef}
             onRemoveCascadeNode={handleRemoveCascadeNode}
+            outputs={outputs}
           />
         </Column>
 
@@ -457,34 +467,34 @@ export default function Home() {
           <Column gap="m" padding="m" style={{ flex: 1, overflowY: "auto" }}>
             <Column gap="xs">
               <Heading as="h3">Output</Heading>
-              {outputs.length === 1 ? (
+              {panelOutputs.length === 0 ? null : panelOutputs.length === 1 ? (
                 <>
-                  {outputs[0].label && (
+                  {panelOutputs[0].label && (
                     <Text variant="label-default-xs" onBackground="neutral-weak">
-                      {outputs[0].label}
+                      {panelOutputs[0].label}
                     </Text>
                   )}
                   <Textarea
                     id="output"
-                    value={outputs[0].text}
+                    value={panelOutputs[0].text}
                     readOnly
                     lines={8}
                     resize="vertical"
                     style={{
                       background:
-                        hoveredLeafId === outputs[0].id ? "var(--accent-alpha-weak)" : undefined,
+                        hoveredLeafId === panelOutputs[0].id ? "var(--accent-alpha-weak)" : undefined,
                       transition: "background 0.15s",
                     }}
-                    onMouseEnter={() => setHoveredOutputId(outputs[0].id)}
+                    onMouseEnter={() => setHoveredOutputId(panelOutputs[0].id)}
                     onMouseLeave={() => setHoveredOutputId(null)}
                   />
                   <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
-                    {outputs[0].text.length} chars ·{" "}
-                    {outputs[0].text === "" ? 0 : outputs[0].text.split("\n").length} lines
+                    {panelOutputs[0].text.length} chars ·{" "}
+                    {panelOutputs[0].text === "" ? 0 : panelOutputs[0].text.split("\n").length} lines
                   </Text>
                 </>
               ) : (
-                outputs.map((out: GraphOutput, i: number) => (
+                panelOutputs.map((out: GraphOutput, i: number) => (
                   <Column key={out.id} gap="xs">
                     <Text variant="label-default-xs" onBackground="neutral-weak">
                       {out.label ?? `Output ${i + 1}`}

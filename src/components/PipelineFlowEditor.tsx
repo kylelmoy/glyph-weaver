@@ -26,7 +26,7 @@ import { PipelineOpNode } from "@/components/PipelineOpNode";
 import type { OpNodeData } from "@/components/PipelineOpNode";
 import { PipelineOutputNode } from "@/components/PipelineOutputNode";
 import type { OutputNodeData } from "@/components/PipelineOutputNode";
-import type { PipelineGraph } from "@/lib/pipelineGraph";
+import type { GraphOutput, PipelineGraph } from "@/lib/pipelineGraph";
 import { INPUT_NODE_ID, OUTPUT_NODE_ID } from "@/lib/pipelineGraph";
 import { OPERATIONS } from "@/lib/operations";
 import { useTheme } from "@once-ui-system/core";
@@ -217,11 +217,10 @@ function flowToGraph(rfNodes: Node[], rfEdges: Edge[]): PipelineGraph {
         };
       }
       if (n.type === "pipeline-output") {
-        const outData = n.data as OutputNodeData;
         return {
           id: n.id,
           operationId: OUTPUT_NODE_ID,
-          params: { label: outData.params.label ?? "" },
+          params: {},
           position: n.position,
         };
       }
@@ -306,6 +305,7 @@ interface PipelineFlowEditorProps {
   hoveredOutputId: string | null;
   findFreePositionRef: React.MutableRefObject<FindFreePosition | undefined>;
   onRemoveCascadeNode: (nodeId: string) => void;
+  outputs: GraphOutput[];
 }
 
 export function PipelineFlowEditor({
@@ -323,6 +323,7 @@ export function PipelineFlowEditor({
   hoveredOutputId,
   findFreePositionRef,
   onRemoveCascadeNode,
+  outputs,
 }: PipelineFlowEditorProps) {
   const { theme } = useTheme();
   const [colorMode, setColorMode] = useState<"light" | "dark">("light");
@@ -407,6 +408,16 @@ export function PipelineFlowEditor({
       ),
     );
   }, [inputText, onInputChange, setRFNodes]);
+
+  // Sync computed output text into each output node's data.
+  useEffect(() => {
+    const textById = new Map(outputs.map((o) => [o.id, o.text]));
+    setRFNodes((prev) =>
+      prev.map((n) =>
+        n.type === "pipeline-output" ? { ...n, data: { ...n.data, text: textById.get(n.id) ?? "" } } : n,
+      ),
+    );
+  }, [outputs, setRFNodes]);
 
   useEffect(() => {
     setRFNodes((prev) =>

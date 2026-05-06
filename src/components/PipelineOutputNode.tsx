@@ -1,6 +1,6 @@
 "use client";
 
-import { Column, IconButton, Input, Row, Text } from "@once-ui-system/core";
+import { Column, IconButton, Row, Text, Textarea } from "@once-ui-system/core";
 import { Handle, Position } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
 
@@ -9,30 +9,32 @@ export interface OutputNodeData extends Record<string, unknown> {
   onUpdateParam: (key: string, value: string) => void;
   onRemove: () => void;
   highlighted?: boolean;
+  /** Computed output text from processGraph, injected by PipelineFlowEditor. */
+  text?: string;
 }
 
 /**
- * React Flow node for a pipeline output tap — a passthrough node that always
- * appears in the output panel so the user can inspect intermediate pipeline state.
+ * React Flow node for a pipeline output tap — a passthrough node that displays
+ * the computed text at that point in the pipeline directly on the canvas.
  */
 export function PipelineOutputNode({ id, data, selected }: NodeProps) {
   const nodeData = data as OutputNodeData;
   const isHighlighted = !!nodeData.highlighted;
+  const text = nodeData.text ?? "";
 
   const borderColor =
     selected || isHighlighted ? "var(--brand-solid-strong)" : "var(--accent-alpha-medium)";
 
-  const background = isHighlighted ? "var(--accent-alpha-weak)" : "var(--accent-alpha-weak)";
+  const background = isHighlighted ? "var(--accent-alpha-weak)" : "var(--background-page)";
 
   return (
     <div
       style={{
         background,
         border: `2px solid ${borderColor}`,
-        transition: "background 0.15s, border-color 0.15s",
+        transition: "border-color 0.15s",
         borderRadius: "var(--radius-m)",
         minWidth: 200,
-        maxWidth: 280,
       }}
     >
       <Handle type="target" position={Position.Left} isConnectableStart={false} />
@@ -48,15 +50,17 @@ export function PipelineOutputNode({ id, data, selected }: NodeProps) {
             onClick={nodeData.onRemove}
           />
         </Row>
-        <Input
-          id={`${id}-label`}
-          label="Label"
-          placeholder="Optional label..."
-          value={nodeData.params.label ?? ""}
-          onChange={(e) => nodeData.onUpdateParam("label", e.target.value)}
-          height="s"
-          className="nodrag"
+        <Textarea
+          id={`${id}-output`}
+          value={text}
+          readOnly
+          lines={4}
+          resize="both"
+          className="nodrag nowheel"
         />
+        <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
+          {text.length} chars · {text === "" ? 0 : text.split("\n").length} lines
+        </Text>
       </Column>
 
       <Handle type="source" position={Position.Right} isConnectableStart={false} />
