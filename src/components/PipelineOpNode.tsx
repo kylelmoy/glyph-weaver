@@ -129,7 +129,11 @@ export function PipelineOpNode({ id, data, selected }: NodeProps) {
         <Handle type="target" position={Position.Left} isConnectableStart={false} />
       )}
 
-      <Column gap="xs" padding="s" style={nodeData.multiInput ? { paddingLeft: "1.5rem" } : undefined}>
+      <Column
+        gap="xs"
+        padding="s"
+        style={nodeData.multiInput ? { paddingLeft: "1.5rem" } : undefined}
+      >
         <Row gap="s" vertical="center" horizontal="between">
           <Text variant="label-strong-s" title={op.description}>
             {op.name}
@@ -168,7 +172,9 @@ export function PipelineOpNode({ id, data, selected }: NodeProps) {
                 icon="close"
                 size="s"
                 variant="ghost"
-                tooltip={nodeData.shiftHeld ? "Remove with all downstream" : "Remove (shift to remove all)"}
+                tooltip={
+                  nodeData.shiftHeld ? "Remove with all downstream" : "Remove (shift to remove all)"
+                }
                 onClick={handleRemoveClick}
               />
             </span>

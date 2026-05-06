@@ -57,7 +57,13 @@ export function PipelineOutputNode({ id, data, selected }: NodeProps) {
           lines={4}
           resize="both"
           className="nodrag nowheel"
-          style={{ fontFamily: "monospace", fontSize: "12px", lineHeight: "normal", minHeight: "300px", minWidth: "200px" }}
+          style={{
+            fontFamily: "monospace",
+            fontSize: "12px",
+            lineHeight: "normal",
+            minHeight: "300px",
+            minWidth: "200px",
+          }}
         />
         <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
           {text.length} chars · {text === "" ? 0 : text.split("\n").length} lines

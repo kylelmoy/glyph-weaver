@@ -1,5 +1,12 @@
 /** The groupings shown in the Operations panel. */
-export type OperationCategory = "Sorting" | "Filtering" | "Case" | "Edit" | "Format" | "Custom" | "Set";
+export type OperationCategory =
+  | "Sorting"
+  | "Filtering"
+  | "Case"
+  | "Edit"
+  | "Format"
+  | "Custom"
+  | "Set";
 
 /** A single configurable input field displayed on an operation node. */
 export interface ParamDefinition {

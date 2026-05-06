@@ -203,8 +203,7 @@ export function processGraph(graph: PipelineGraph): GraphOutput[] {
   );
   // Leaves: non-input, non-output-tap nodes with no outgoing edges.
   const leaves = execNodes.filter(
-    (n) =>
-      n.operationId !== OUTPUT_NODE_ID && (childrenOf.get(n.id)?.length ?? 0) === 0,
+    (n) => n.operationId !== OUTPUT_NODE_ID && (childrenOf.get(n.id)?.length ?? 0) === 0,
   );
 
   const allOutputs = [

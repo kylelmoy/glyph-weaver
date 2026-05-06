@@ -54,10 +54,7 @@ export const setOps: OperationDefinition[] = [
     applyMulti: ([a = [], b = []]) => {
       const aSet = new Set(a);
       const bSet = new Set(b);
-      return [
-        ...a.filter((line) => !bSet.has(line)),
-        ...b.filter((line) => !aSet.has(line)),
-      ];
+      return [...a.filter((line) => !bSet.has(line)), ...b.filter((line) => !aSet.has(line))];
     },
   },
 ];

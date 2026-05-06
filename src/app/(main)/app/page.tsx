@@ -159,10 +159,10 @@ export default function Home() {
   const searchQuery = operationSearch.trim().toLowerCase();
   const filteredOps = searchQuery
     ? OPERATIONS.filter(
-      (op) =>
-        op.name.toLowerCase().includes(searchQuery) ||
-        op.description.toLowerCase().includes(searchQuery),
-    )
+        (op) =>
+          op.name.toLowerCase().includes(searchQuery) ||
+          op.description.toLowerCase().includes(searchQuery),
+      )
     : null;
 
   return (
@@ -254,7 +254,12 @@ export default function Home() {
           </Column>
 
           {/* Scrollable operation list */}
-          <Column gap="s" padding="m" style={{ flex: 1, overflowY: "auto" }} className="scrollbar-minimal">
+          <Column
+            gap="s"
+            padding="m"
+            style={{ flex: 1, overflowY: "auto" }}
+            className="scrollbar-minimal"
+          >
             {filteredOps ? (
               filteredOps.length === 0 ? (
                 <Text variant="body-default-s" onBackground="neutral-weak">
@@ -442,7 +447,6 @@ export default function Home() {
             />
           </Row>
         </Column>
-
       </Row>
     </Column>
   );

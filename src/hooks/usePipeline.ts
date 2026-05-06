@@ -30,7 +30,9 @@ const OP_CHILD_X_OFFSET = 350;
 const INITIAL_INPUT_NODE: PipelineNode = {
   id: INPUT_NODE_ID,
   operationId: INPUT_NODE_ID,
-  params: { text: "Kassidy Graves\nCesar Merritt\nKaisley O’Connell\nJovanni Evans\nEliana Compton\nAbner Norton\nKylee Corona\nDarian Jefferson\nJulieta Vincent" },
+  params: {
+    text: "Kassidy Graves\nCesar Merritt\nKaisley O’Connell\nJovanni Evans\nEliana Compton\nAbner Norton\nKylee Corona\nDarian Jefferson\nJulieta Vincent",
+  },
   position: { x: 0, y: 0 },
 };
 
@@ -38,7 +40,12 @@ const INITIAL_GRAPH: PipelineGraph = {
   nodes: [
     INITIAL_INPUT_NODE,
     { id: "0", operationId: "sort-alpha", params: {}, position: { x: INPUT_CHILD_X_OFFSET, y: 0 } },
-    { id: "1", operationId: OUTPUT_NODE_ID, params: {}, position: { x: INPUT_CHILD_X_OFFSET + OP_CHILD_X_OFFSET, y: 0 } },
+    {
+      id: "1",
+      operationId: OUTPUT_NODE_ID,
+      params: {},
+      position: { x: INPUT_CHILD_X_OFFSET + OP_CHILD_X_OFFSET, y: 0 },
+    },
   ],
   edges: [
     { id: `e-${INPUT_NODE_ID}-0`, source: INPUT_NODE_ID, target: "0" },
@@ -144,7 +151,10 @@ export function usePipeline() {
    */
   function addOperation(
     operationId: string,
-    findFreePosition?: (pos: { x: number; y: number }, nudgeRight: boolean) => { x: number; y: number },
+    findFreePosition?: (
+      pos: { x: number; y: number },
+      nudgeRight: boolean,
+    ) => { x: number; y: number },
     asSibling?: boolean,
   ) {
     const op = OPERATIONS.find((o) => o.id === operationId);
@@ -254,7 +264,10 @@ export function usePipeline() {
    * connections manually.
    */
   function addInputNode(
-    findFreePosition?: (pos: { x: number; y: number }, nudgeRight: boolean) => { x: number; y: number },
+    findFreePosition?: (
+      pos: { x: number; y: number },
+      nudgeRight: boolean,
+    ) => { x: number; y: number },
   ) {
     const newId = String(nextId.current++);
     const primaryInput = graph.nodes.find((n) => n.id === INPUT_NODE_ID)!;
@@ -285,7 +298,10 @@ export function usePipeline() {
    * regardless of whether it is a leaf, allowing mid-pipeline inspection.
    */
   function addOutputNode(
-    findFreePosition?: (pos: { x: number; y: number }, nudgeRight: boolean) => { x: number; y: number },
+    findFreePosition?: (
+      pos: { x: number; y: number },
+      nudgeRight: boolean,
+    ) => { x: number; y: number },
   ) {
     const newId = String(nextId.current++);
     const parentId = selectedNodeId;
@@ -370,9 +386,11 @@ export function usePipeline() {
     while (queue.length > 0) {
       const id = queue.shift()!;
       toRemove.add(id);
-      graph.edges.filter((e) => e.source === id).forEach((e) => {
-        if (!toRemove.has(e.target)) queue.push(e.target);
-      });
+      graph.edges
+        .filter((e) => e.source === id)
+        .forEach((e) => {
+          if (!toRemove.has(e.target)) queue.push(e.target);
+        });
     }
 
     if (selectedNodeId && toRemove.has(selectedNodeId)) setSelectedNodeId(null);

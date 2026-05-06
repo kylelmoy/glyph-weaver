@@ -53,9 +53,11 @@ function getDescendantIds(sourceId: string, edges: Edge[]): Set<string> {
   while (queue.length > 0) {
     const id = queue.shift()!;
     ids.add(id);
-    edges.filter((e) => e.source === id).forEach((e) => {
-      if (!ids.has(e.target)) queue.push(e.target);
-    });
+    edges
+      .filter((e) => e.source === id)
+      .forEach((e) => {
+        if (!ids.has(e.target)) queue.push(e.target);
+      });
   }
   return ids;
 }
@@ -122,7 +124,8 @@ function graphToFlow(
 
     // Reordering is disabled for set operations (multi-input).
     const parentNode = parentId ? graph.nodes.find((p) => p.id === parentId) : undefined;
-    const singleChild = children.length === 1 ? graph.nodes.find((c) => c.id === children[0]) : undefined;
+    const singleChild =
+      children.length === 1 ? graph.nodes.find((c) => c.id === children[0]) : undefined;
     const canMoveUp =
       !op?.multiInput &&
       !!parentId &&
@@ -302,8 +305,12 @@ export function PipelineFlowEditor({
 
   // Track the Shift key globally so node components can react to it.
   useEffect(() => {
-    const down = (e: KeyboardEvent) => { if (e.key === "Shift") setShiftHeld(true); };
-    const up = (e: KeyboardEvent) => { if (e.key === "Shift") setShiftHeld(false); };
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "Shift") setShiftHeld(true);
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === "Shift") setShiftHeld(false);
+    };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     return () => {
@@ -364,7 +371,9 @@ export function PipelineFlowEditor({
     const textById = new Map(outputs.map((o) => [o.id, o.text]));
     setRFNodes((prev) =>
       prev.map((n) =>
-        n.type === "pipeline-output" ? { ...n, data: { ...n.data, text: textById.get(n.id) ?? "" } } : n,
+        n.type === "pipeline-output"
+          ? { ...n, data: { ...n.data, text: textById.get(n.id) ?? "" } }
+          : n,
       ),
     );
   }, [outputs, setRFNodes]);
@@ -377,17 +386,13 @@ export function PipelineFlowEditor({
 
   // Propagate global shift-key state into each node so they can style accordingly.
   useEffect(() => {
-    setRFNodes((prev) =>
-      prev.map((n) => ({ ...n, data: { ...n.data, shiftHeld } })),
-    );
+    setRFNodes((prev) => prev.map((n) => ({ ...n, data: { ...n.data, shiftHeld } })));
   }, [shiftHeld, setRFNodes]);
 
   // When the cascade-hover source changes, mark all descendants as deletePending.
   useEffect(() => {
     if (!cascadeHoverSourceId) {
-      setRFNodes((prev) =>
-        prev.map((n) => ({ ...n, data: { ...n.data, deletePending: false } })),
-      );
+      setRFNodes((prev) => prev.map((n) => ({ ...n, data: { ...n.data, deletePending: false } })));
       return;
     }
     const pendingIds = getDescendantIds(cascadeHoverSourceId, rfEdges);
@@ -511,7 +516,12 @@ export function PipelineFlowEditor({
   );
 
   const onReconnectEnd = useCallback(
-    (_event: unknown, edge: Edge, _handleType: unknown, connectionState: { isValid: boolean | null }) => {
+    (
+      _event: unknown,
+      edge: Edge,
+      _handleType: unknown,
+      connectionState: { isValid: boolean | null },
+    ) => {
       if (!connectionState.isValid) {
         // Edge was dropped in empty space — remove it.
         const newEdges = rfEdges.filter((e) => e.id !== edge.id);
