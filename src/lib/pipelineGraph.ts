@@ -107,7 +107,7 @@ export interface GraphOutput {
  * @param input - Raw text for the primary input node (newline-delimited).
  * @param graph - The pipeline DAG to execute.
  */
-export function processGraph(input: string, graph: PipelineGraph): GraphOutput[] {
+export function processGraph(graph: PipelineGraph): GraphOutput[] {
   const inputNodes = graph.nodes.filter((n) => n.operationId === INPUT_NODE_ID);
   const execNodes = graph.nodes.filter((n) => n.operationId !== INPUT_NODE_ID);
 
@@ -155,9 +155,9 @@ export function processGraph(input: string, graph: PipelineGraph): GraphOutput[]
   // ── Execute in topological order ───────────────────────────────────────────
   const outputCache = new Map<string, string>();
 
-  // Seed all input nodes.
+  // Seed all input nodes from their stored text.
   for (const node of inputNodes) {
-    outputCache.set(node.id, node.id === INPUT_NODE_ID ? input : (node.params.text ?? ""));
+    outputCache.set(node.id, node.params.text ?? "");
   }
 
   const nodeById = new Map(graph.nodes.map((n) => [n.id, n]));
@@ -189,7 +189,7 @@ export function processGraph(input: string, graph: PipelineGraph): GraphOutput[]
     } else {
       // Single-input operations.
       const parentId = parents[0]?.source;
-      const sourceText = parentId !== undefined ? (outputCache.get(parentId) ?? input) : input;
+      const sourceText = parentId !== undefined ? (outputCache.get(parentId) ?? "") : "";
       const lines = sourceText === "" ? [] : sourceText.split("\n");
       const resultLines = op ? op.apply(lines, node.params) : lines;
       outputCache.set(id, resultLines.join("\n"));

@@ -71,8 +71,6 @@ function graphToFlow(
   onSwapWithParent: (nodeId: string) => void,
   onSwapWithChild: (nodeId: string) => void,
   onSwapHover: (nodeId: string | null) => void,
-  inputText: string,
-  onInputChange: (text: string) => void,
   selectedNodeId: string | null,
   onCascadeHover: (nodeId: string | null) => void,
   onRemoveCascadeNode: (nodeId: string) => void,
@@ -88,21 +86,17 @@ function graphToFlow(
 
   const nodes: Node[] = graph.nodes.map((n) => {
     if (n.operationId === INPUT_NODE_ID) {
-      const isPrimary = n.id === INPUT_NODE_ID;
       return {
         id: n.id,
         type: "pipeline-input" as const,
         position: n.position,
         selected: n.id === selectedNodeId,
-        deletable: !isPrimary,
-        data: (isPrimary
-          ? { inputText, onInputChange, isPrimary: true }
-          : {
-              text: n.params.text ?? "",
-              onTextChange: (v: string) => onUpdateParam(n.id, "text", v),
-              onRemove: () => onRemoveNode(n.id),
-              isPrimary: false,
-            }) satisfies InputNodeData,
+        deletable: n.id !== INPUT_NODE_ID,
+        data: {
+          text: n.params.text ?? "",
+          onTextChange: (v: string) => onUpdateParam(n.id, "text", v),
+          onRemove: n.id !== INPUT_NODE_ID ? () => onRemoveNode(n.id) : undefined,
+        } satisfies InputNodeData,
       };
     }
 
@@ -185,11 +179,10 @@ function flowToGraph(rfNodes: Node[], rfEdges: Edge[]): PipelineGraph {
   return {
     nodes: rfNodes.map((n) => {
       if (n.type === "pipeline-input") {
-        const inputData = n.data as InputNodeData;
         return {
           id: n.id,
           operationId: INPUT_NODE_ID,
-          params: n.id === INPUT_NODE_ID ? {} : { text: inputData.text ?? "" },
+          params: { text: (n.data as InputNodeData).text ?? "" },
           position: n.position,
         };
       }
@@ -274,8 +267,6 @@ interface PipelineFlowEditorProps {
   onRemoveNode: (nodeId: string) => void;
   onSwapWithParent: (nodeId: string) => void;
   onSwapWithChild: (nodeId: string) => void;
-  inputText: string;
-  onInputChange: (text: string) => void;
   selectedNodeId: string | null;
   onSelectNode: (id: string | null) => void;
   findFreePositionRef: React.MutableRefObject<FindFreePosition | undefined>;
@@ -290,8 +281,6 @@ export function PipelineFlowEditor({
   onRemoveNode,
   onSwapWithParent,
   onSwapWithChild,
-  inputText,
-  onInputChange,
   selectedNodeId,
   onSelectNode,
   findFreePositionRef,
@@ -329,8 +318,6 @@ export function PipelineFlowEditor({
     onSwapWithParent,
     onSwapWithChild,
     setSwapHoverTargetId,
-    inputText,
-    onInputChange,
     selectedNodeId,
     setCascadeHoverSourceId,
     onRemoveCascadeNode,
@@ -352,8 +339,6 @@ export function PipelineFlowEditor({
       onSwapWithParent,
       onSwapWithChild,
       setSwapHoverTargetId,
-      inputText,
-      onInputChange,
       selectedNodeId,
       setCascadeHoverSourceId,
       onRemoveCascadeNode,
@@ -372,15 +357,6 @@ export function PipelineFlowEditor({
     setRFEdges,
     onRemoveCascadeNode,
   ]);
-
-  // Update only the primary input node's data when inputText changes.
-  useEffect(() => {
-    setRFNodes((prev) =>
-      prev.map((n) =>
-        n.id === INPUT_NODE_ID ? { ...n, data: { ...n.data, inputText, onInputChange } } : n,
-      ),
-    );
-  }, [inputText, onInputChange, setRFNodes]);
 
   // Sync computed output text into each output node's data.
   useEffect(() => {

@@ -80,27 +80,6 @@ function CategorySection({ name, ops, isExpanded, onToggle, onAdd }: CategorySec
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function Home() {
-  const [inputText, setInputText] = useState("");
-  const inputSaveCount = useRef(0);
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem("glyph-weaver-session-input");
-      if (stored !== null) setInputText(stored);
-    } catch {
-      /* localStorage unavailable */
-    }
-  }, []);
-
-  useEffect(() => {
-    inputSaveCount.current++;
-    if (inputSaveCount.current === 1) return;
-    try {
-      localStorage.setItem("glyph-weaver-session-input", inputText);
-    } catch {
-      /* localStorage unavailable or quota exceeded */
-    }
-  }, [inputText]);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     () => new Set(["Recent", "Custom", "Sorting", "Filtering"]),
   );
@@ -170,14 +149,10 @@ export default function Home() {
   const handleAddInputNode = () => addInputNode(findFreePositionRef.current);
   const handleAddOutputNode = () => addOutputNode(findFreePositionRef.current);
 
-  const outputs = useMemo(() => processGraph(inputText, graph), [inputText, graph]);
+  const outputs = useMemo(() => processGraph(graph), [graph]);
 
   const handleReset = () => {
     reset();
-    setInputText("");
-    try {
-      localStorage.removeItem("glyph-weaver-session-input");
-    } catch {}
   };
 
   const [operationSearch, setOperationSearch] = useState("");
@@ -429,8 +404,6 @@ export default function Home() {
             onRemoveNode={handleRemoveNode}
             onSwapWithParent={swapWithParent}
             onSwapWithChild={swapWithChild}
-            inputText={inputText}
-            onInputChange={setInputText}
             selectedNodeId={selectedNodeId}
             onSelectNode={setSelectedNodeId}
             findFreePositionRef={findFreePositionRef}

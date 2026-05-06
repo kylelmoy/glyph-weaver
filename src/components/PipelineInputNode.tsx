@@ -6,30 +6,19 @@ import type { NodeProps } from "@xyflow/react";
 import { useState } from "react";
 
 export interface InputNodeData extends Record<string, unknown> {
-  /** True for the primary input node; false for additional input nodes. */
-  isPrimary?: boolean;
-  // Primary input fields:
-  inputText?: string;
-  onInputChange?: (text: string) => void;
-  // Additional input fields:
-  text?: string;
-  onTextChange?: (text: string) => void;
+  text: string;
+  onTextChange: (text: string) => void;
   onRemove?: () => void;
   highlighted?: boolean;
 }
 
 /**
  * React Flow node for a pipeline input — displays a textarea for source text
- * with a collapse toggle. Primary and additional input nodes share this component;
- * additional nodes show a remove button.
+ * with a collapse toggle. Shows a remove button when `onRemove` is provided.
  */
 export function PipelineInputNode({ id, data, selected }: NodeProps) {
   const nodeData = data as InputNodeData;
   const [collapsed, setCollapsed] = useState(false);
-
-  const isPrimary = nodeData.isPrimary !== false;
-  const displayText = isPrimary ? (nodeData.inputText ?? "") : (nodeData.text ?? "");
-  const handleChange = isPrimary ? nodeData.onInputChange : nodeData.onTextChange;
 
   return (
     <div
@@ -52,7 +41,7 @@ export function PipelineInputNode({ id, data, selected }: NodeProps) {
               tooltip={collapsed ? "Expand" : "Collapse"}
               onClick={() => setCollapsed((c) => !c)}
             />
-            {!isPrimary && nodeData.onRemove && (
+            {nodeData.onRemove && (
               <IconButton
                 icon="close"
                 size="s"
@@ -67,17 +56,17 @@ export function PipelineInputNode({ id, data, selected }: NodeProps) {
         {!collapsed && (
           <>
             <Textarea
-              id={isPrimary ? "pipeline-input-text" : `pipeline-input-${id}`}
+              id={`pipeline-input-${id}`}
               placeholder="Enter input text..."
-              value={displayText}
-              onChange={(e) => handleChange?.(e.target.value)}
+              value={nodeData.text}
+              onChange={(e) => nodeData.onTextChange(e.target.value)}
               lines={5}
               resize="both"
               className="nodrag nowheel"
             />
             <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
-              {displayText.length} chars ·{" "}
-              {displayText === "" ? 0 : displayText.split("\n").length} lines
+              {nodeData.text.length} chars ·{" "}
+              {nodeData.text === "" ? 0 : nodeData.text.split("\n").length} lines
             </Text>
           </>
         )}

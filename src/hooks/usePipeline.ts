@@ -30,7 +30,7 @@ const OP_CHILD_X_OFFSET = 320;
 const INITIAL_INPUT_NODE: PipelineNode = {
   id: INPUT_NODE_ID,
   operationId: INPUT_NODE_ID,
-  params: {},
+  params: { text: "" },
   position: { x: 0, y: 0 },
 };
 
