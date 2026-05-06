@@ -35,7 +35,7 @@ interface CategorySectionProps {
   ops: OperationDefinition[];
   isExpanded: boolean;
   onToggle: () => void;
-  onAdd: (operationId: string) => void;
+  onAdd: (operationId: string, asSibling: boolean) => void;
 }
 
 /** Collapsible accordion section used for both named categories and "Recent". */
@@ -65,7 +65,7 @@ function CategorySection({ name, ops, isExpanded, onToggle, onAdd }: CategorySec
               size="s"
               variant="secondary"
               suffixIcon="plus"
-              onClick={() => onAdd(op.id)}
+              onClick={(e: React.MouseEvent) => onAdd(op.id, e.shiftKey)}
               title={op.description}
             >
               {op.name}
@@ -139,8 +139,8 @@ export default function Home() {
     ((pos: { x: number; y: number }, nudgeRight: boolean) => { x: number; y: number }) | undefined
   >(undefined);
 
-  const addOperationAndTrack = (operationId: string) => {
-    addOperation(operationId, findFreePositionRef.current);
+  const addOperationAndTrack = (operationId: string, asSibling = false) => {
+    addOperation(operationId, findFreePositionRef.current, asSibling);
     setRecentOperationIds((prev) =>
       [operationId, ...prev.filter((id) => id !== operationId)].slice(0, 6),
     );
@@ -269,7 +269,7 @@ export default function Home() {
                       size="s"
                       variant="secondary"
                       suffixIcon="plus"
-                      onClick={() => addOperationAndTrack(op.id)}
+                      onClick={(e: React.MouseEvent) => addOperationAndTrack(op.id, e.shiftKey)}
                       title={op.description}
                     >
                       {op.name}

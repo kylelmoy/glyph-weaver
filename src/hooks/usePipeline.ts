@@ -145,6 +145,7 @@ export function usePipeline() {
   function addOperation(
     operationId: string,
     findFreePosition?: (pos: { x: number; y: number }, nudgeRight: boolean) => { x: number; y: number },
+    asSibling?: boolean,
   ) {
     const op = OPERATIONS.find((o) => o.id === operationId);
     const params: Record<string, string> = {};
@@ -159,23 +160,77 @@ export function usePipeline() {
       graph.nodes.find((n) => n.id === parentId) ??
       graph.nodes.find((n) => n.id === INPUT_NODE_ID)!;
 
-    const isInputParent = parent.operationId === INPUT_NODE_ID;
-    let position = {
-      x: parent.position.x + (isInputParent ? INPUT_CHILD_X_OFFSET : OP_CHILD_X_OFFSET),
-      y: parent.position.y,
-    };
+    // Insert between parent and its child when the parent has exactly one
+    // outgoing edge and shift is not held. Fall back to sibling otherwise.
+    const outgoingEdges = graph.edges.filter((e) => e.source === parentId);
+    const existingEdge = !asSibling && outgoingEdges.length === 1 ? outgoingEdges[0] : undefined;
 
-    if (findFreePosition) {
-      position = findFreePosition(position, false); // nudge down to stack siblings
+    let position: { x: number; y: number };
+    let descendantShiftX = 0;
+    let descendantIds: Set<string> = new Set();
+
+    if (existingEdge) {
+      // Place new node one step right of parent and push descendants further right.
+      position = { x: parent.position.x + OP_CHILD_X_OFFSET, y: parent.position.y };
+      const childNode = graph.nodes.find((n) => n.id === existingEdge.target);
+      const targetChildX = position.x + OP_CHILD_X_OFFSET;
+      descendantShiftX = Math.max(0, targetChildX - (childNode?.position.x ?? targetChildX));
+
+      // BFS to collect the child and all its descendants.
+      const queue = [existingEdge.target];
+      while (queue.length > 0) {
+        const id = queue.shift()!;
+        descendantIds.add(id);
+        for (const e of graph.edges.filter((e) => e.source === id)) {
+          if (!descendantIds.has(e.target)) queue.push(e.target);
+        }
+      }
+    } else {
+      const isInputParent = parent.operationId === INPUT_NODE_ID;
+      position = {
+        x: parent.position.x + (isInputParent ? INPUT_CHILD_X_OFFSET : OP_CHILD_X_OFFSET),
+        y: parent.position.y,
+      };
+      if (findFreePosition) {
+        position = findFreePosition(position, false);
+      }
     }
 
     setGraph((prev) => {
       const newNode: PipelineNode = { id: newId, operationId, params, position };
+      if (existingEdge) {
+        // Splice new node between parent and its child, shifting descendants right.
+        return {
+          nodes: [
+            ...prev.nodes.map((n) =>
+              descendantIds.has(n.id)
+                ? { ...n, position: { ...n.position, x: n.position.x + descendantShiftX } }
+                : n,
+            ),
+            newNode,
+          ],
+          edges: [
+            ...prev.edges.filter((e) => e.id !== existingEdge.id),
+            {
+              id: `e-${parentId}-${newId}`,
+              source: parentId,
+              target: newId,
+              ...(op?.multiInput ? { targetHandle: "a" } : {}),
+            },
+            {
+              id: `e-${newId}-${existingEdge.target}`,
+              source: newId,
+              target: existingEdge.target,
+              ...(existingEdge.targetHandle ? { targetHandle: existingEdge.targetHandle } : {}),
+            },
+          ],
+        };
+      }
+      // Add as a new branch from the parent.
       const newEdge: PipelineEdge = {
         id: `e-${parent.id}-${newId}`,
         source: parent.id,
         target: newId,
-        // Set op nodes receive their first auto-connection on handle "a".
         ...(op?.multiInput ? { targetHandle: "a" } : {}),
       };
       return {
