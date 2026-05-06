@@ -160,24 +160,29 @@ export function usePipeline() {
       graph.nodes.find((n) => n.id === parentId) ??
       graph.nodes.find((n) => n.id === INPUT_NODE_ID)!;
 
-    // Insert between parent and its child when the parent has exactly one
-    // outgoing edge and shift is not held. Fall back to sibling otherwise.
+    // Splice the new node between the parent and all its children unless shift
+    // is held (sibling mode) or the parent has no children yet.
     const outgoingEdges = graph.edges.filter((e) => e.source === parentId);
-    const existingEdge = !asSibling && outgoingEdges.length === 1 ? outgoingEdges[0] : undefined;
+    const shouldSplice = !asSibling && outgoingEdges.length > 0;
 
     let position: { x: number; y: number };
     let descendantShiftX = 0;
-    let descendantIds: Set<string> = new Set();
+    const descendantIds = new Set<string>();
 
-    if (existingEdge) {
-      // Place new node one step right of parent and push descendants further right.
+    if (shouldSplice) {
+      // New node goes one step right of parent; all children + descendants shift
+      // further right to leave OP_CHILD_X_OFFSET of space after the new node.
       position = { x: parent.position.x + OP_CHILD_X_OFFSET, y: parent.position.y };
-      const childNode = graph.nodes.find((n) => n.id === existingEdge.target);
       const targetChildX = position.x + OP_CHILD_X_OFFSET;
-      descendantShiftX = Math.max(0, targetChildX - (childNode?.position.x ?? targetChildX));
+      const minChildX = Math.min(
+        ...outgoingEdges.map(
+          (e) => graph.nodes.find((n) => n.id === e.target)?.position.x ?? targetChildX,
+        ),
+      );
+      descendantShiftX = Math.max(0, targetChildX - minChildX);
 
-      // BFS to collect the child and all its descendants.
-      const queue = [existingEdge.target];
+      // BFS to collect every child and its descendants.
+      const queue = outgoingEdges.map((e) => e.target);
       while (queue.length > 0) {
         const id = queue.shift()!;
         descendantIds.add(id);
@@ -198,8 +203,9 @@ export function usePipeline() {
 
     setGraph((prev) => {
       const newNode: PipelineNode = { id: newId, operationId, params, position };
-      if (existingEdge) {
-        // Splice new node between parent and its child, shifting descendants right.
+      if (shouldSplice) {
+        // Splice: shift descendants right, rewire all parent→child edges through new node.
+        const spliceEdgeIds = new Set(outgoingEdges.map((e) => e.id));
         return {
           nodes: [
             ...prev.nodes.map((n) =>
@@ -210,19 +216,19 @@ export function usePipeline() {
             newNode,
           ],
           edges: [
-            ...prev.edges.filter((e) => e.id !== existingEdge.id),
+            ...prev.edges.filter((e) => !spliceEdgeIds.has(e.id)),
             {
               id: `e-${parentId}-${newId}`,
               source: parentId,
               target: newId,
               ...(op?.multiInput ? { targetHandle: "a" } : {}),
             },
-            {
-              id: `e-${newId}-${existingEdge.target}`,
+            ...outgoingEdges.map((e) => ({
+              id: `e-${newId}-${e.target}`,
               source: newId,
-              target: existingEdge.target,
-              ...(existingEdge.targetHandle ? { targetHandle: existingEdge.targetHandle } : {}),
-            },
+              target: e.target,
+              ...(e.targetHandle ? { targetHandle: e.targetHandle } : {}),
+            })),
           ],
         };
       }

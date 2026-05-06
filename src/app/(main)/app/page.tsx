@@ -66,7 +66,7 @@ function CategorySection({ name, ops, isExpanded, onToggle, onAdd }: CategorySec
               variant="secondary"
               suffixIcon="plus"
               onClick={(e: React.MouseEvent) => onAdd(op.id, e.shiftKey)}
-              title={op.description}
+              title={`${op.description} (Shift + click to branch)`}
             >
               {op.name}
             </Button>
@@ -159,10 +159,10 @@ export default function Home() {
   const searchQuery = operationSearch.trim().toLowerCase();
   const filteredOps = searchQuery
     ? OPERATIONS.filter(
-        (op) =>
-          op.name.toLowerCase().includes(searchQuery) ||
-          op.description.toLowerCase().includes(searchQuery),
-      )
+      (op) =>
+        op.name.toLowerCase().includes(searchQuery) ||
+        op.description.toLowerCase().includes(searchQuery),
+    )
     : null;
 
   return (
@@ -254,7 +254,7 @@ export default function Home() {
           </Column>
 
           {/* Scrollable operation list */}
-          <Column gap="s" padding="m" style={{ flex: 1, overflowY: "auto" }}>
+          <Column gap="s" padding="m" style={{ flex: 1, overflowY: "auto" }} className="scrollbar-minimal">
             {filteredOps ? (
               filteredOps.length === 0 ? (
                 <Text variant="body-default-s" onBackground="neutral-weak">
@@ -270,7 +270,7 @@ export default function Home() {
                       variant="secondary"
                       suffixIcon="plus"
                       onClick={(e: React.MouseEvent) => addOperationAndTrack(op.id, e.shiftKey)}
-                      title={op.description}
+                      title={`${op.description} (Shift + click to branch)`}
                     >
                       {op.name}
                     </Button>
