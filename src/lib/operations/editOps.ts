@@ -123,7 +123,7 @@ export const editOps: OperationDefinition[] = [
     ],
     apply: (lines, params) => {
       const start = Number.parseInt(params.start ?? "") || 1;
-      const sep = params.separator !== undefined ? params.separator : ". ";
+      const sep = params.separator || ". ";
       return lines.map((line, i) => `${start + i}${sep}${line}`);
     },
   },

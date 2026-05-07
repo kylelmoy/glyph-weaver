@@ -8,14 +8,14 @@ import type { OperationDefinition } from "./types";
 export const caseOps: OperationDefinition[] = [
   {
     id: "uppercase",
-    name: "Uppercase",
+    name: "UPPERCASE",
     description: "Convert each line to UPPERCASE",
     category: "Case",
     apply: (lines) => lines.map((line) => line.toUpperCase()),
   },
   {
     id: "lowercase",
-    name: "Lowercase",
+    name: "lowercase",
     description: "Convert each line to lowercase",
     category: "Case",
     apply: (lines) => lines.map((line) => line.toLowerCase()),

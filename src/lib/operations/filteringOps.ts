@@ -15,14 +15,14 @@ export const filteringOps: OperationDefinition[] = [
   },
   {
     id: "remove-empty",
-    name: "Remove Empty Lines",
+    name: "Remove Empty",
     description: "Remove blank and whitespace-only lines",
     category: "Filtering",
     apply: (lines) => lines.filter((line) => line.trim() !== ""),
   },
   {
     id: "remove-containing",
-    name: "Remove Lines Containing",
+    name: "Remove Containing",
     description: "Remove lines that contain the specified text",
     category: "Filtering",
     params: [{ key: "query", label: "Text to match", placeholder: "e.g. foo" }],
@@ -34,7 +34,7 @@ export const filteringOps: OperationDefinition[] = [
   },
   {
     id: "keep-containing",
-    name: "Keep Lines Containing",
+    name: "Keep Containing",
     description: "Keep only lines that contain the specified text",
     category: "Filtering",
     params: [{ key: "query", label: "Text to match", placeholder: "e.g. foo" }],
@@ -46,7 +46,7 @@ export const filteringOps: OperationDefinition[] = [
   },
   {
     id: "keep-regex",
-    name: "Keep Lines Matching Regex",
+    name: "Keep Matching Regex",
     description: "Keep only lines that match a regular expression",
     category: "Filtering",
     params: [
@@ -65,7 +65,7 @@ export const filteringOps: OperationDefinition[] = [
   },
   {
     id: "remove-regex",
-    name: "Remove Lines Matching Regex",
+    name: "Remove Matching Regex",
     description: "Remove lines that match a regular expression",
     category: "Filtering",
     params: [
