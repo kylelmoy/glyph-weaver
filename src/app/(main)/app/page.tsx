@@ -11,6 +11,7 @@ import Link from "next/link";
 import { Logo } from "@/components/Logo";
 import { PipelineFlowEditor } from "@/components/PipelineFlowEditor";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import type { FindFreePosition } from "@/components/IntersectionHelper";
 import { usePipeline } from "@/hooks/usePipeline";
 import { INPUT_NODE_ID, processGraph } from "@/lib/pipelineGraph";
 import { OPERATIONS, OPERATION_CATEGORIES } from "@/lib/operations";
@@ -26,7 +27,7 @@ import {
   Row,
   Text,
 } from "@once-ui-system/core";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
 // ── Operations palette helpers ────────────────────────────────────────────────
 
@@ -118,26 +119,9 @@ export default function Home() {
     reset,
   } = usePipeline();
 
-  const handleUpdateParam = useCallback(
-    (nodeId: string, key: string, value: string) => updateParam(nodeId, key, value),
-    [updateParam],
-  );
-
-  const handleRemoveNode = useCallback(
-    (nodeId: string) => removeOperation(nodeId),
-    [removeOperation],
-  );
-
-  const handleRemoveCascadeNode = useCallback(
-    (nodeId: string) => removeCascade(nodeId),
-    [removeCascade],
-  );
-
   // Populated by IntersectionHelper (rendered inside the React Flow canvas), which
   // uses the ReactFlow context to check candidate positions against existing nodes.
-  const findFreePositionRef = useRef<
-    ((pos: { x: number; y: number }, nudgeRight: boolean) => { x: number; y: number }) | undefined
-  >(undefined);
+  const findFreePositionRef = useRef<FindFreePosition | undefined>(undefined);
 
   const addOperationAndTrack = (operationId: string, asSibling = false) => {
     addOperation(operationId, findFreePositionRef.current, asSibling);
@@ -150,10 +134,6 @@ export default function Home() {
   const handleAddOutputNode = () => addOutputNode(findFreePositionRef.current);
 
   const outputs = useMemo(() => processGraph(graph), [graph]);
-
-  const handleReset = () => {
-    reset();
-  };
 
   const [operationSearch, setOperationSearch] = useState("");
   const searchQuery = operationSearch.trim().toLowerCase();
@@ -188,7 +168,7 @@ export default function Home() {
             size="s"
             variant="ghost"
             tooltip="Reset everything"
-            onClick={handleReset}
+            onClick={reset}
           />
           <ThemeToggle />
         </Row>
@@ -405,14 +385,14 @@ export default function Home() {
           <PipelineFlowEditor
             graph={graph}
             onGraphChange={setGraph}
-            onUpdateParam={handleUpdateParam}
-            onRemoveNode={handleRemoveNode}
+            onUpdateParam={updateParam}
+            onRemoveNode={removeOperation}
             onSwapWithParent={swapWithParent}
             onSwapWithChild={swapWithChild}
             selectedNodeId={selectedNodeId}
             onSelectNode={setSelectedNodeId}
             findFreePositionRef={findFreePositionRef}
-            onRemoveCascadeNode={handleRemoveCascadeNode}
+            onRemoveCascadeNode={removeCascade}
             outputs={outputs}
           />
           <Row

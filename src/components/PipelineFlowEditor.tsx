@@ -1,5 +1,18 @@
 "use client";
 
+/**
+ * PipelineFlowEditor — React Flow canvas for the Glyph Weaver pipeline.
+ *
+ * Responsibilities:
+ *  - Sync an abstract `PipelineGraph` ↔ React Flow nodes/edges state.
+ *  - Handle canvas interactions: drag, connect, reconnect, delete, select.
+ *  - Propagate global Shift-key state into node data for delete-preview styling.
+ *  - Inject computed output text into output/tap node data.
+ *
+ * Conversion utilities (graphToFlow / flowToGraph) live in flowConversions.ts.
+ * The IntersectionHelper (findFreePosition ref) lives in IntersectionHelper.tsx.
+ */
+
 import {
   Background,
   BackgroundVariant,
@@ -9,7 +22,6 @@ import {
   reconnectEdge,
   useEdgesState,
   useNodesState,
-  useReactFlow,
 } from "@xyflow/react";
 import type {
   Connection,
@@ -21,15 +33,16 @@ import type {
   OnNodesChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import { IntersectionHelper } from "@/components/IntersectionHelper";
+import type { FindFreePosition } from "@/components/IntersectionHelper";
 import { PipelineInputNode } from "@/components/PipelineInputNode";
-import type { InputNodeData } from "@/components/PipelineInputNode";
 import { PipelineOpNode } from "@/components/PipelineOpNode";
 import type { OpNodeData } from "@/components/PipelineOpNode";
 import { PipelineOutputNode } from "@/components/PipelineOutputNode";
-import type { OutputNodeData } from "@/components/PipelineOutputNode";
+import { flowToGraph, getDescendantIds, graphToFlow } from "@/components/flowConversions";
+import type { GraphToFlowCallbacks } from "@/components/flowConversions";
 import type { GraphOutput, PipelineGraph } from "@/lib/pipelineGraph";
-import { INPUT_NODE_ID, OUTPUT_NODE_ID } from "@/lib/pipelineGraph";
-import { OPERATIONS } from "@/lib/operations";
+import { INPUT_NODE_ID } from "@/lib/pipelineGraph";
 import { useTheme } from "@once-ui-system/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -42,225 +55,6 @@ const NODE_TYPES = {
 };
 
 export type OpNode = Node<OpNodeData, "op">;
-
-/**
- * Collect a node and all its descendants by following outgoing edges.
- * Used to compute the preview set for a cascade deletion.
- */
-function getDescendantIds(sourceId: string, edges: Edge[]): Set<string> {
-  const ids = new Set<string>();
-  const queue = [sourceId];
-  while (queue.length > 0) {
-    const id = queue.shift()!;
-    ids.add(id);
-    edges
-      .filter((e) => e.source === id)
-      .forEach((e) => {
-        if (!ids.has(e.target)) queue.push(e.target);
-      });
-  }
-  return ids;
-}
-
-// ── Conversion helpers ────────────────────────────────────────────────────────
-
-/**
- * Convert a `PipelineGraph` to the node/edge format React Flow expects.
- */
-function graphToFlow(
-  graph: PipelineGraph,
-  onUpdateParam: (nodeId: string, key: string, value: string) => void,
-  onRemoveNode: (nodeId: string) => void,
-  onSwapWithParent: (nodeId: string) => void,
-  onSwapWithChild: (nodeId: string) => void,
-  onSwapHover: (nodeId: string | null) => void,
-  selectedNodeId: string | null,
-  onCascadeHover: (nodeId: string | null) => void,
-  onRemoveCascadeNode: (nodeId: string) => void,
-): { nodes: Node[]; edges: Edge[] } {
-  // Build adjacency maps for canMoveUp/Down computation.
-  const parentOf = new Map<string, string>();
-  const childrenOf = new Map<string, string[]>();
-  for (const node of graph.nodes) childrenOf.set(node.id, []);
-  for (const edge of graph.edges) {
-    parentOf.set(edge.target, edge.source);
-    childrenOf.get(edge.source)?.push(edge.target);
-  }
-
-  const nodes: Node[] = graph.nodes.map((n) => {
-    if (n.operationId === INPUT_NODE_ID) {
-      return {
-        id: n.id,
-        type: "pipeline-input" as const,
-        position: n.position,
-        selected: n.id === selectedNodeId,
-        deletable: n.id !== INPUT_NODE_ID,
-        data: {
-          text: n.params.text ?? "",
-          onTextChange: (v: string) => onUpdateParam(n.id, "text", v),
-          onRemove: n.id !== INPUT_NODE_ID ? () => onRemoveNode(n.id) : undefined,
-        } satisfies InputNodeData,
-      };
-    }
-
-    if (n.operationId === OUTPUT_NODE_ID) {
-      return {
-        id: n.id,
-        type: "pipeline-output" as const,
-        position: n.position,
-        selected: n.id === selectedNodeId,
-        data: {
-          params: n.params,
-          onUpdateParam: (key: string, value: string) => onUpdateParam(n.id, key, value),
-          onRemove: () => onRemoveNode(n.id),
-          highlighted: false,
-        } satisfies OutputNodeData,
-      };
-    }
-
-    const parentId = parentOf.get(n.id);
-    const children = childrenOf.get(n.id) ?? [];
-    const op = OPERATIONS.find((o) => o.id === n.operationId);
-
-    // Reordering is disabled for set operations (multi-input).
-    const parentNode = parentId ? graph.nodes.find((p) => p.id === parentId) : undefined;
-    const singleChild =
-      children.length === 1 ? graph.nodes.find((c) => c.id === children[0]) : undefined;
-    const canMoveUp =
-      !op?.multiInput &&
-      !!parentId &&
-      !!parentNode &&
-      parentNode.operationId !== INPUT_NODE_ID &&
-      parentNode.operationId !== OUTPUT_NODE_ID;
-    const canMoveDown =
-      !op?.multiInput &&
-      !!singleChild &&
-      singleChild.operationId !== INPUT_NODE_ID &&
-      singleChild.operationId !== OUTPUT_NODE_ID;
-
-    return {
-      id: n.id,
-      type: "op" as const,
-      position: n.position,
-      selected: n.id === selectedNodeId,
-      data: {
-        operationId: n.operationId,
-        params: n.params,
-        onUpdateParam: (key: string, value: string) => onUpdateParam(n.id, key, value),
-        onRemove: () => onRemoveNode(n.id),
-        onRemoveCascade: () => onRemoveCascadeNode(n.id),
-        onMoveUp: () => onSwapWithParent(n.id),
-        onMoveDown: () => onSwapWithChild(n.id),
-        canMoveUp,
-        canMoveDown,
-        onSwapHover,
-        onCascadeHover,
-        swapUpTargetId: canMoveUp ? parentId : undefined,
-        swapDownTargetId: canMoveDown ? children[0] : undefined,
-        shiftHeld: false,
-        deletePending: false,
-        multiInput: op?.multiInput,
-      } satisfies OpNodeData,
-      ariaLabel: op?.name,
-    };
-  });
-
-  const edges: Edge[] = graph.edges.map((e) => ({
-    id: e.id,
-    source: e.source,
-    target: e.target,
-    ...(e.targetHandle ? { targetHandle: e.targetHandle } : {}),
-  }));
-
-  return { nodes, edges };
-}
-
-/**
- * Strip React Flow–specific fields from nodes/edges and return a plain
- * `PipelineGraph` suitable for persistence and pipeline execution.
- */
-function flowToGraph(rfNodes: Node[], rfEdges: Edge[]): PipelineGraph {
-  return {
-    nodes: rfNodes.map((n) => {
-      if (n.type === "pipeline-input") {
-        return {
-          id: n.id,
-          operationId: INPUT_NODE_ID,
-          params: { text: (n.data as InputNodeData).text ?? "" },
-          position: n.position,
-        };
-      }
-      if (n.type === "pipeline-output") {
-        return {
-          id: n.id,
-          operationId: OUTPUT_NODE_ID,
-          params: {},
-          position: n.position,
-        };
-      }
-      return {
-        id: n.id,
-        operationId: (n.data as OpNodeData).operationId,
-        params: (n.data as OpNodeData).params,
-        position: n.position,
-      };
-    }),
-    edges: rfEdges.map((e) => ({
-      id: e.id,
-      source: e.source,
-      target: e.target,
-      ...(e.targetHandle ? { targetHandle: e.targetHandle } : {}),
-    })),
-  };
-}
-
-// ── Intersection helper ───────────────────────────────────────────────────────
-
-type Position = { x: number; y: number };
-type FindFreePosition = (pos: Position, nudgeRight: boolean) => Position;
-
-// Estimated op-node dimensions used for intersection checking (see PipelineOpNode styles).
-const NODE_W = 280; // matches maxWidth
-const NODE_H = 120; // approximates height with one param input
-
-const NUDGE_STEP_X = 350; // horizontal step (right nudge) — multiple of 50 snap grid
-const NUDGE_STEP_Y = 150; // vertical step (down nudge) — multiple of 50 snap grid
-
-/**
- * A render-null component that lives inside `<ReactFlow>` (giving it access to
- * the ReactFlow context) and writes a `findFreePosition` helper into the
- * provided ref on every render.
- *
- * This pattern is necessary because `useReactFlow` can only be called inside a
- * descendant of the `ReactFlow` provider, but the position-finding logic needs
- * to run in the parent before a new node is added to the graph.
- */
-function IntersectionHelper({
-  findFreePositionRef,
-}: {
-  findFreePositionRef: React.MutableRefObject<FindFreePosition | undefined>;
-}) {
-  const { getIntersectingNodes } = useReactFlow();
-
-  findFreePositionRef.current = (pos, nudgeRight) => {
-    let candidate = { ...pos };
-    for (let i = 0; i < 30; i++) {
-      const hits = getIntersectingNodes(
-        { x: candidate.x, y: candidate.y, width: NODE_W, height: NODE_H },
-        true,
-      );
-      if (hits.length === 0) return candidate;
-      if (nudgeRight) {
-        candidate = { ...candidate, x: candidate.x + NUDGE_STEP_X };
-      } else {
-        candidate = { ...candidate, y: candidate.y + NUDGE_STEP_Y };
-      }
-    }
-    return candidate;
-  };
-
-  return null;
-}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -321,14 +115,16 @@ export function PipelineFlowEditor({
 
   const { nodes: initialNodes, edges: initialEdges } = graphToFlow(
     graph,
-    onUpdateParam,
-    onRemoveNode,
-    onSwapWithParent,
-    onSwapWithChild,
-    setSwapHoverTargetId,
+    {
+      onUpdateParam,
+      onRemoveNode,
+      onSwapWithParent,
+      onSwapWithChild,
+      onSwapHover: setSwapHoverTargetId,
+      onCascadeHover: setCascadeHoverSourceId,
+      onRemoveCascadeNode,
+    } satisfies GraphToFlowCallbacks,
     selectedNodeId,
-    setCascadeHoverSourceId,
-    onRemoveCascadeNode,
   );
 
   const [rfNodes, setRFNodes, onRFNodesChange] = useNodesState<Node>(initialNodes);
@@ -342,14 +138,16 @@ export function PipelineFlowEditor({
     prevGraphRef.current = graph;
     const { nodes, edges } = graphToFlow(
       graph,
-      onUpdateParam,
-      onRemoveNode,
-      onSwapWithParent,
-      onSwapWithChild,
-      setSwapHoverTargetId,
+      {
+        onUpdateParam,
+        onRemoveNode,
+        onSwapWithParent,
+        onSwapWithChild,
+        onSwapHover: setSwapHoverTargetId,
+        onCascadeHover: setCascadeHoverSourceId,
+        onRemoveCascadeNode,
+      },
       selectedNodeId,
-      setCascadeHoverSourceId,
-      onRemoveCascadeNode,
     );
     setRFNodes(nodes);
     setRFEdges(edges);
@@ -359,7 +157,6 @@ export function PipelineFlowEditor({
     onRemoveNode,
     onSwapWithParent,
     onSwapWithChild,
-    setSwapHoverTargetId,
     selectedNodeId,
     setRFNodes,
     setRFEdges,
@@ -416,6 +213,7 @@ export function PipelineFlowEditor({
           break;
         }
         // Sync node removal to graph (Delete key) — primary input node cannot be removed.
+        // Bridge incoming → outgoing edges to keep downstream nodes connected.
         if (change.type === "remove" && change.id !== INPUT_NODE_ID) {
           if (change.id === selectedNodeId) onSelectNode(null);
           const removedId = change.id;

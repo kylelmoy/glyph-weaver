@@ -37,8 +37,6 @@ export interface OpNodeData extends Record<string, unknown> {
  */
 export function PipelineOpNode({ id, data, selected }: NodeProps) {
   const nodeData = data as OpNodeData;
-  const op = OPERATIONS.find((o) => o.id === nodeData.operationId);
-  if (!op) return null;
 
   const [removeHovered, setRemoveHovered] = useState(false);
 
@@ -49,6 +47,9 @@ export function PipelineOpNode({ id, data, selected }: NodeProps) {
     if (!removeHovered) return;
     nodeData.onCascadeHover(nodeData.shiftHeld ? id : null);
   }, [nodeData.shiftHeld]); // onCascadeHover is a stable state setter; id is stable
+
+  const op = OPERATIONS.find((o) => o.id === nodeData.operationId);
+  if (!op) return null;
 
   const handleRemoveEnter = () => {
     setRemoveHovered(true);
