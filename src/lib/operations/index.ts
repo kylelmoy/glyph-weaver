@@ -40,11 +40,11 @@ export const OPERATIONS_BY_ID = new Map(OPERATIONS.map((op) => [op.id, op]));
  * without scrolling.
  */
 export const OPERATION_CATEGORIES: OperationCategory[] = [
-  "Custom",
   "Sorting",
   "Filtering",
-  "Case",
   "Edit",
   "Format",
   "Set",
+  "Case",
+  "Custom",
 ];

@@ -59,7 +59,7 @@ function CategorySection({ name, ops, isExpanded, onToggle, onAdd, shiftHeld }: 
         />
       </Row>
       {isExpanded && (
-        <Column gap="4">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--static-space-4)" }}>
           {ops.map((op) => (
             <Button
               key={op.id}
@@ -73,7 +73,7 @@ function CategorySection({ name, ops, isExpanded, onToggle, onAdd, shiftHeld }: 
               {op.name}
             </Button>
           ))}
-        </Column>
+        </div>
       )}
     </Column>
   );
@@ -83,7 +83,7 @@ function CategorySection({ name, ops, isExpanded, onToggle, onAdd, shiftHeld }: 
 
 export default function Home() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    () => new Set(["Recent", "Custom", "Sorting", "Filtering"]),
+    () => new Set(["Recent", "Custom", "Sorting", "Filtering", "Edit"]),
   );
   const [recentOperationIds, setRecentOperationIds] = useState<string[]>([]);
   const [shiftHeld, setShiftHeld] = useState(false);
@@ -178,12 +178,12 @@ export default function Home() {
         <ThemeToggle />
       </Row>
 
-      {/* ── 3-column body ── */}
+      {/* ── 2-column body ── */}
       <Row fillWidth style={{ flex: 1, overflow: "hidden", minHeight: 0 }}>
         {/* ── Left: Operations palette ── */}
         <Column
           style={{
-            width: 300,
+            width: 500,
             flexShrink: 0,
             borderRight: "1px solid var(--neutral-alpha-medium)",
             display: "flex",
@@ -238,7 +238,7 @@ export default function Home() {
                 variant="secondary"
                 suffixIcon="plus"
                 onClick={handleAddOutputNode}
-                title="Add an output tap node below the selected node"
+                title="Add an output tap node to the selected node"
               >
                 Output
               </Button>
@@ -259,7 +259,7 @@ export default function Home() {
                   No results
                 </Text>
               ) : (
-                <Column gap="4">
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--static-space-4)" }}>
                   {filteredOps.map((op) => (
                     <Button
                       key={op.id}
@@ -273,7 +273,7 @@ export default function Home() {
                       {op.name}
                     </Button>
                   ))}
-                </Column>
+                </div>
               )
             ) : (
               <>
@@ -395,7 +395,7 @@ export default function Home() {
           </Column>
         </Column>
 
-        {/* ── Center: Flow canvas ── */}
+        {/* ── Right: Flow canvas ── */}
         <Column style={{ flex: 1, overflow: "hidden", minWidth: 0, position: "relative" }}>
           <PipelineFlowEditor
             graph={graph}
