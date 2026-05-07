@@ -3,12 +3,16 @@ import type { IconType } from "react-icons";
 import { HiOutlineRocketLaunch } from "react-icons/hi2";
 import { FaGithub, FaLinkedin } from "react-icons/fa6";
 import { FaRegSave } from "react-icons/fa";
+import { TbArrowsSplit } from "react-icons/tb";
+import { MdOutlineRestartAlt } from "react-icons/md";
 
 export const iconLibrary: Record<string, IconType> = {
   rocket: HiOutlineRocketLaunch,
   github: FaGithub,
   linkedin: FaLinkedin,
   save: FaRegSave,
+  split: TbArrowsSplit,
+  reset: MdOutlineRestartAlt,
 };
 
 export type IconLibrary = typeof iconLibrary;

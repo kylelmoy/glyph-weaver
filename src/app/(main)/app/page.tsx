@@ -27,7 +27,7 @@ import {
   Row,
   Text,
 } from "@once-ui-system/core";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 // ── Operations palette helpers ────────────────────────────────────────────────
 
@@ -37,10 +37,11 @@ interface CategorySectionProps {
   isExpanded: boolean;
   onToggle: () => void;
   onAdd: (operationId: string, asSibling: boolean) => void;
+  shiftHeld: boolean;
 }
 
 /** Collapsible accordion section used for both named categories and "Recent". */
-function CategorySection({ name, ops, isExpanded, onToggle, onAdd }: CategorySectionProps) {
+function CategorySection({ name, ops, isExpanded, onToggle, onAdd, shiftHeld }: CategorySectionProps) {
   return (
     <Column gap="4">
       <Row
@@ -65,7 +66,7 @@ function CategorySection({ name, ops, isExpanded, onToggle, onAdd }: CategorySec
               fillWidth
               size="s"
               variant="secondary"
-              suffixIcon="plus"
+              suffixIcon={shiftHeld ? "split" : "plus"}
               onClick={(e: React.MouseEvent) => onAdd(op.id, e.shiftKey)}
               title={`${op.description} (Shift + click to branch)`}
             >
@@ -85,6 +86,18 @@ export default function Home() {
     () => new Set(["Recent", "Custom", "Sorting", "Filtering"]),
   );
   const [recentOperationIds, setRecentOperationIds] = useState<string[]>([]);
+  const [shiftHeld, setShiftHeld] = useState(false);
+
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => { if (e.key === "Shift") setShiftHeld(true); };
+    const up = (e: KeyboardEvent) => { if (e.key === "Shift") setShiftHeld(false); };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, []);
 
   const toggleCategory = (category: string) => {
     setExpandedCategories((prev) => {
@@ -139,10 +152,10 @@ export default function Home() {
   const searchQuery = operationSearch.trim().toLowerCase();
   const filteredOps = searchQuery
     ? OPERATIONS.filter(
-        (op) =>
-          op.name.toLowerCase().includes(searchQuery) ||
-          op.description.toLowerCase().includes(searchQuery),
-      )
+      (op) =>
+        op.name.toLowerCase().includes(searchQuery) ||
+        op.description.toLowerCase().includes(searchQuery),
+    )
     : null;
 
   return (
@@ -162,16 +175,7 @@ export default function Home() {
             <Heading as="h2">Glyph Weaver</Heading>
           </Row>
         </Link>
-        <Row gap="s" vertical="center">
-          <IconButton
-            icon="refresh"
-            size="s"
-            variant="ghost"
-            tooltip="Reset everything"
-            onClick={reset}
-          />
-          <ThemeToggle />
-        </Row>
+        <ThemeToggle />
       </Row>
 
       {/* ── 3-column body ── */}
@@ -189,7 +193,16 @@ export default function Home() {
         >
           {/* Pinned heading + search */}
           <Column gap="s" paddingX="m" paddingTop="m" style={{ flexShrink: 0 }}>
-            <Heading as="h4">Operations</Heading>
+            <Row fillWidth vertical="center" horizontal="between">
+              <Heading as="h4">Operations</Heading>
+              <IconButton
+                icon="reset"
+                size="s"
+                variant="ghost"
+                tooltip="Reset everything"
+                onClick={reset}
+              />
+            </Row>
             <Input
               id="op-search"
               placeholder="Search..."
@@ -253,7 +266,7 @@ export default function Home() {
                       fillWidth
                       size="s"
                       variant="secondary"
-                      suffixIcon="plus"
+                      suffixIcon={shiftHeld ? "split" : "plus"}
                       onClick={(e: React.MouseEvent) => addOperationAndTrack(op.id, e.shiftKey)}
                       title={`${op.description} (Shift + click to branch)`}
                     >
@@ -274,6 +287,7 @@ export default function Home() {
                     isExpanded={expandedCategories.has("Recent")}
                     onToggle={() => toggleCategory("Recent")}
                     onAdd={addOperationAndTrack}
+                    shiftHeld={shiftHeld}
                   />
                 )}
 
@@ -285,6 +299,7 @@ export default function Home() {
                     isExpanded={expandedCategories.has(category)}
                     onToggle={() => toggleCategory(category)}
                     onAdd={addOperationAndTrack}
+                    shiftHeld={shiftHeld}
                   />
                 ))}
               </>

@@ -11,6 +11,8 @@ export interface OutputNodeData extends Record<string, unknown> {
   highlighted?: boolean;
   /** Computed output text from processGraph, injected by PipelineFlowEditor. */
   text?: string;
+  /** True when this node is in the cascade-delete preview set. */
+  deletePending?: boolean;
 }
 
 /**
@@ -19,20 +21,28 @@ export interface OutputNodeData extends Record<string, unknown> {
  */
 export function PipelineOutputNode({ id, data, selected }: NodeProps) {
   const nodeData = data as OutputNodeData;
-  const isHighlighted = !!nodeData.highlighted;
+  const isDeletable = !!nodeData.deletePending;
+  const isHighlighted = !isDeletable && !!nodeData.highlighted;
   const text = nodeData.text ?? "";
 
-  const borderColor =
-    selected || isHighlighted ? "var(--brand-solid-strong)" : "var(--neutral-alpha-medium)";
+  const borderColor = isDeletable
+    ? "var(--danger-solid-strong)"
+    : selected || isHighlighted
+      ? "var(--brand-solid-strong)"
+      : "var(--neutral-alpha-medium)";
 
-  const background = isHighlighted ? "var(--accent-alpha-weak)" : "var(--background-page)";
+  const background = isDeletable
+    ? "var(--danger-alpha-weak)"
+    : isHighlighted
+      ? "var(--accent-alpha-weak)"
+      : "var(--background-page)";
 
   return (
     <div
       style={{
         background,
         border: `2px solid ${borderColor}`,
-        transition: "border-color 0.15s",
+        transition: "background 0.15s, border-color 0.15s",
         borderRadius: "var(--radius-m)",
         minWidth: 200,
       }}
