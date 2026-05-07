@@ -68,8 +68,8 @@ const dataStyle = {
 const meta = {
   home: {
     path: "/",
-    title: "glyph-weaver by kyle moy",
-    description: "A web-based tool for manipulating text.",
+    title: "Glyph Weaver by kyle moy",
+    description: "A web-based text transformation playground.",
     image: "/images/og/og_image.png",
     canonical: "https://glyph.kylelmoy.com",
     robots: "index,follow",
