@@ -1,6 +1,6 @@
 "use client";
 
-import { OPERATIONS } from "@/lib/operations";
+import { OPERATIONS_BY_ID } from "@/lib/operations";
 import { Column, IconButton, Input, Row, Text } from "@once-ui-system/core";
 import { Handle, Position } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
@@ -48,7 +48,7 @@ export function PipelineOpNode({ id, data, selected }: NodeProps) {
     nodeData.onCascadeHover(nodeData.shiftHeld ? id : null);
   }, [nodeData.shiftHeld]); // onCascadeHover is a stable state setter; id is stable
 
-  const op = OPERATIONS.find((o) => o.id === nodeData.operationId);
+  const op = OPERATIONS_BY_ID.get(nodeData.operationId);
   if (!op) return null;
 
   const handleRemoveEnter = () => {

@@ -11,7 +11,7 @@
  * @module pipelineGraph
  */
 
-import { OPERATIONS } from "./operations";
+import { OPERATIONS_BY_ID } from "./operations";
 
 // ── Sentinel IDs ──────────────────────────────────────────────────────────────
 
@@ -175,7 +175,7 @@ export function processGraph(graph: PipelineGraph): GraphOutput[] {
       continue;
     }
 
-    const op = OPERATIONS.find((o) => o.id === node.operationId);
+    const op = OPERATIONS_BY_ID.get(node.operationId);
 
     if (op?.applyMulti) {
       // Multi-input (set operations): resolve inputs by targetHandle.

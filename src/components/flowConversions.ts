@@ -9,7 +9,7 @@
 import type { InputNodeData } from "@/components/PipelineInputNode";
 import type { OpNodeData } from "@/components/PipelineOpNode";
 import type { OutputNodeData } from "@/components/PipelineOutputNode";
-import { OPERATIONS } from "@/lib/operations";
+import { OPERATIONS_BY_ID } from "@/lib/operations";
 import { INPUT_NODE_ID, OUTPUT_NODE_ID } from "@/lib/pipelineGraph";
 import type { PipelineGraph } from "@/lib/pipelineGraph";
 import type { Edge, Node } from "@xyflow/react";
@@ -107,7 +107,7 @@ export function graphToFlow(
 
     const parentId = parentOf.get(n.id);
     const children = childrenOf.get(n.id) ?? [];
-    const op = OPERATIONS.find((o) => o.id === n.operationId);
+    const op = OPERATIONS_BY_ID.get(n.operationId);
 
     // Reordering is disabled for set operations (multi-input).
     const parentNode = parentId ? graph.nodes.find((p) => p.id === parentId) : undefined;

@@ -31,6 +31,9 @@ export const OPERATIONS = [
   ...setOps,
 ];
 
+/** O(1) lookup map for operations by ID. Use instead of `OPERATIONS.find`. */
+export const OPERATIONS_BY_ID = new Map(OPERATIONS.map((op) => [op.id, op]));
+
 /**
  * Display order for the Operations panel sidebar.
  * Custom is listed first so user-defined operations are always reachable
