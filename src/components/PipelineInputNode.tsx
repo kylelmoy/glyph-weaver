@@ -3,7 +3,7 @@
 import { Column, IconButton, Row, Text, Textarea } from "@once-ui-system/core";
 import { Handle, Position } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export interface InputNodeData extends Record<string, unknown> {
   text: string;
@@ -19,6 +19,16 @@ export interface InputNodeData extends Record<string, unknown> {
 export function PipelineInputNode({ id, data, selected }: NodeProps) {
   const nodeData = data as InputNodeData;
   const [collapsed, setCollapsed] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => nodeData.onTextChange((ev.target?.result as string) ?? "");
+    reader.readAsText(file);
+    e.target.value = "";
+  };
 
   return (
     <div
@@ -34,6 +44,20 @@ export function PipelineInputNode({ id, data, selected }: NodeProps) {
         <Row vertical="center" horizontal="between">
           <Text variant="label-strong-s">Input</Text>
           <Row gap="2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="text/*,.txt,.csv,.tsv,.json,.md"
+              style={{ display: "none" }}
+              onChange={handleUpload}
+            />
+            <IconButton
+              icon="upload"
+              size="s"
+              variant="ghost"
+              tooltip="Load from file"
+              onClick={() => fileInputRef.current?.click()}
+            />
             <IconButton
               icon={collapsed ? "maximize" : "minimize"}
               size="s"
