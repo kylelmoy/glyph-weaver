@@ -3,6 +3,7 @@
 import { Column, IconButton, Row, Text, Textarea } from "@once-ui-system/core";
 import { Handle, Position } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
+import { useState } from "react";
 
 export interface OutputNodeData extends Record<string, unknown> {
   params: Record<string, string>;
@@ -24,6 +25,25 @@ export function PipelineOutputNode({ id, data, selected }: NodeProps) {
   const isDeletable = !!nodeData.deletePending;
   const isHighlighted = !isDeletable && !!nodeData.highlighted;
   const text = nodeData.text ?? "";
+
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  const handleDownload = () => {
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "output.txt";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const borderColor = isDeletable
     ? "var(--danger-solid-strong)"
@@ -52,13 +72,29 @@ export function PipelineOutputNode({ id, data, selected }: NodeProps) {
       <Column gap="xs" padding="s">
         <Row gap="s" vertical="center" horizontal="between">
           <Text variant="label-strong-s">Output</Text>
-          <IconButton
-            icon="close"
-            size="s"
-            variant="ghost"
-            tooltip="Remove output node"
-            onClick={nodeData.onRemove}
-          />
+          <Row gap="2">
+            <IconButton
+              icon={copied ? "check" : "copy"}
+              size="s"
+              variant="ghost"
+              tooltip={copied ? "Copied!" : "Copy to clipboard"}
+              onClick={handleCopy}
+            />
+            <IconButton
+              icon="download"
+              size="s"
+              variant="ghost"
+              tooltip="Download as .txt"
+              onClick={handleDownload}
+            />
+            <IconButton
+              icon="close"
+              size="s"
+              variant="ghost"
+              tooltip="Remove output node"
+              onClick={nodeData.onRemove}
+            />
+          </Row>
         </Row>
         <Textarea
           id={`${id}-output`}
