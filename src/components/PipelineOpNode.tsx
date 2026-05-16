@@ -4,7 +4,54 @@ import { OPERATIONS_BY_ID } from "@/lib/operations";
 import { Column, IconButton, Input, Row, Text } from "@once-ui-system/core";
 import { Handle, Position } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+const DEBOUNCE_MS = 150;
+
+interface ParamInputProps {
+  nodeId: string;
+  paramKey: string;
+  label: string;
+  placeholder?: string;
+  monospace?: boolean;
+  value: string;
+  onUpdateParam: (key: string, value: string) => void;
+}
+
+function ParamInput({ nodeId, paramKey, label, placeholder, monospace, value, onUpdateParam }: ParamInputProps) {
+  const [localValue, setLocalValue] = useState(value);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSentRef = useRef(value);
+
+  useEffect(() => {
+    if (value !== lastSentRef.current) {
+      setLocalValue(value);
+      lastSentRef.current = value;
+    }
+  }, [value]);
+
+  const handleChange = (v: string) => {
+    setLocalValue(v);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      lastSentRef.current = v;
+      onUpdateParam(paramKey, v);
+    }, DEBOUNCE_MS);
+  };
+
+  return (
+    <Input
+      id={`${nodeId}-${paramKey}`}
+      label={label}
+      placeholder={placeholder}
+      value={localValue}
+      onChange={(e) => handleChange(e.target.value)}
+      height="s"
+      className="nodrag"
+      style={monospace ? { fontFamily: "monospace" } : undefined}
+    />
+  );
+}
 
 export interface OpNodeData extends Record<string, unknown> {
   operationId: string;
@@ -183,16 +230,15 @@ export function PipelineOpNode({ id, data, selected }: NodeProps) {
         </Row>
 
         {op.params?.map((param) => (
-          <Input
+          <ParamInput
             key={param.key}
-            id={`${id}-${param.key}`}
+            nodeId={id}
+            paramKey={param.key}
             label={param.label}
             placeholder={param.placeholder}
+            monospace={param.monospace}
             value={nodeData.params[param.key] ?? ""}
-            onChange={(e) => nodeData.onUpdateParam(param.key, e.target.value)}
-            height="s"
-            className="nodrag"
-            style={param.monospace ? { fontFamily: "monospace" } : undefined}
+            onUpdateParam={nodeData.onUpdateParam}
           />
         ))}
       </Column>
