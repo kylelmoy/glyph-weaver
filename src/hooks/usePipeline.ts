@@ -17,7 +17,7 @@ import type {
 } from "@/lib/pipelineGraph";
 import { INPUT_NODE_ID, OUTPUT_NODE_ID } from "@/lib/pipelineGraph";
 import { OPERATIONS } from "@/lib/operations";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const STORAGE_KEY = "glyph-weaver-pipelines";
 const SESSION_KEY = "glyph-weaver-session";
@@ -97,6 +97,10 @@ export function usePipeline() {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   const nextId = useRef(computeNextId(INITIAL_GRAPH));
+  const graphRef = useRef(graph);
+  graphRef.current = graph;
+  const selectedNodeIdRef = useRef(selectedNodeId);
+  selectedNodeIdRef.current = selectedNodeId;
   // Counts how many times the auto-save effect has fired.
   // We skip the very first firing to avoid overwriting a restored session with
   // the bare initial graph that exists before localStorage has been read.
@@ -333,23 +337,23 @@ export function usePipeline() {
   }
 
   /** Update a single parameter value on an existing operation node. */
-  function updateParam(instanceId: string, key: string, value: string) {
+  const updateParam = useCallback((instanceId: string, key: string, value: string) => {
     setGraph((prev) => ({
       ...prev,
       nodes: prev.nodes.map((n) =>
         n.id === instanceId ? { ...n, params: { ...n.params, [key]: value } } : n,
       ),
     }));
-  }
+  }, []);
 
   /**
    * Remove an operation node from the graph, re-bridging its incoming edge
    * to each of its outgoing edges so downstream nodes stay connected.
    */
-  function removeOperation(instanceId: string) {
+  const removeOperation = useCallback((instanceId: string) => {
     // Only the primary input node is protected; additional input nodes can be removed.
     if (instanceId === INPUT_NODE_ID) return;
-    if (selectedNodeId === instanceId) setSelectedNodeId(null);
+    if (selectedNodeIdRef.current === instanceId) setSelectedNodeId(null);
     setGraph((prev) => {
       const inEdge = prev.edges.find((e) => e.target === instanceId);
       const outEdges = prev.edges.filter((e) => e.source === instanceId);
@@ -370,43 +374,41 @@ export function usePipeline() {
         edges: remaining,
       };
     });
-  }
+  }, []);
 
   /**
    * Remove a node and every one of its descendants from the graph.
    * Unlike `removeOperation`, no edge bridging is done — the entire downstream
    * subtree is discarded.
    */
-  function removeCascade(startId: string) {
+  const removeCascade = useCallback((startId: string) => {
     if (startId === INPUT_NODE_ID) return;
 
-    // BFS from startId, following outgoing edges, to collect all descendants.
+    // BFS from startId using latest graph state via ref (avoids stale closure dep).
     const toRemove = new Set<string>();
     const queue = [startId];
     while (queue.length > 0) {
       const id = queue.shift()!;
       toRemove.add(id);
-      graph.edges
-        .filter((e) => e.source === id)
-        .forEach((e) => {
-          if (!toRemove.has(e.target)) queue.push(e.target);
-        });
+      for (const e of graphRef.current.edges) {
+        if (e.source === id && !toRemove.has(e.target)) queue.push(e.target);
+      }
     }
 
-    if (selectedNodeId && toRemove.has(selectedNodeId)) setSelectedNodeId(null);
+    if (selectedNodeIdRef.current && toRemove.has(selectedNodeIdRef.current)) setSelectedNodeId(null);
 
     setGraph((prev) => ({
       nodes: prev.nodes.filter((n) => !toRemove.has(n.id)),
       edges: prev.edges.filter((e) => !toRemove.has(e.source) && !toRemove.has(e.target)),
     }));
-  }
+  }, []);
 
   /**
    * Swap the operation and parameters of a node with those of its parent,
    * effectively moving the node one step earlier in the pipeline.
    * Does nothing if the parent is the input node.
    */
-  function swapWithParent(nodeId: string) {
+  const swapWithParent = useCallback((nodeId: string) => {
     setGraph((prev) => {
       const parentEdge = prev.edges.find((e) => e.target === nodeId);
       if (!parentEdge || parentEdge.source === INPUT_NODE_ID) return prev;
@@ -422,14 +424,14 @@ export function usePipeline() {
         }),
       };
     });
-  }
+  }, []);
 
   /**
    * Swap the operation and parameters of a node with those of its single child,
    * effectively moving the node one step later in the pipeline.
    * Does nothing if the node has no children or more than one child.
    */
-  function swapWithChild(nodeId: string) {
+  const swapWithChild = useCallback((nodeId: string) => {
     setGraph((prev) => {
       const childEdge = prev.edges.find((e) => e.source === nodeId);
       if (!childEdge) return prev;
@@ -445,7 +447,7 @@ export function usePipeline() {
         }),
       };
     });
-  }
+  }, []);
 
   /**
    * Save the current graph under `pipelineName`, overwriting any existing

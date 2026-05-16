@@ -150,13 +150,17 @@ export default function Home() {
 
   const [operationSearch, setOperationSearch] = useState("");
   const searchQuery = operationSearch.trim().toLowerCase();
-  const filteredOps = searchQuery
-    ? OPERATIONS.filter(
-      (op) =>
-        op.name.toLowerCase().includes(searchQuery) ||
-        op.description.toLowerCase().includes(searchQuery),
-    )
-    : null;
+  const filteredOps = useMemo(
+    () =>
+      searchQuery
+        ? OPERATIONS.filter(
+            (op) =>
+              op.name.toLowerCase().includes(searchQuery) ||
+              op.description.toLowerCase().includes(searchQuery),
+          )
+        : null,
+    [searchQuery],
+  );
 
   return (
     <Column fillWidth style={{ height: "100dvh", overflow: "hidden" }}>

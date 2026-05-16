@@ -113,22 +113,26 @@ export function PipelineFlowEditor({
     };
   }, []);
 
-  const { nodes: initialNodes, edges: initialEdges } = graphToFlow(
-    graph,
-    {
-      onUpdateParam,
-      onRemoveNode,
-      onSwapWithParent,
-      onSwapWithChild,
-      onSwapHover: setSwapHoverTargetId,
-      onCascadeHover: setCascadeHoverSourceId,
-      onRemoveCascadeNode,
-    } satisfies GraphToFlowCallbacks,
-    selectedNodeId,
-  );
+  // Compute initial RF state once; the sync effect handles all subsequent updates.
+  const initialFlowRef = useRef<{ nodes: Node[]; edges: Edge[] } | null>(null);
+  if (!initialFlowRef.current) {
+    initialFlowRef.current = graphToFlow(
+      graph,
+      {
+        onUpdateParam,
+        onRemoveNode,
+        onSwapWithParent,
+        onSwapWithChild,
+        onSwapHover: setSwapHoverTargetId,
+        onCascadeHover: setCascadeHoverSourceId,
+        onRemoveCascadeNode,
+      } satisfies GraphToFlowCallbacks,
+      selectedNodeId,
+    );
+  }
 
-  const [rfNodes, setRFNodes, onRFNodesChange] = useNodesState<Node>(initialNodes);
-  const [rfEdges, setRFEdges, onRFEdgesChange] = useEdgesState(initialEdges);
+  const [rfNodes, setRFNodes, onRFNodesChange] = useNodesState<Node>(initialFlowRef.current.nodes);
+  const [rfEdges, setRFEdges, onRFEdgesChange] = useEdgesState(initialFlowRef.current.edges);
 
   const prevGraphRef = useRef(graph);
 
@@ -163,40 +167,26 @@ export function PipelineFlowEditor({
     onRemoveCascadeNode,
   ]);
 
-  // Sync computed output text into each output node's data.
+  // Sync output text, swap highlight, shift-key, and cascade-delete preview into node
+  // data in one pass to avoid four separate React re-renders.
   useEffect(() => {
     const textById = new Map(outputs.map((o) => [o.id, o.text]));
+    const pendingIds = cascadeHoverSourceId
+      ? getDescendantIds(cascadeHoverSourceId, rfEdges)
+      : null;
     setRFNodes((prev) =>
-      prev.map((n) =>
-        n.type === "pipeline-output"
-          ? { ...n, data: { ...n.data, text: textById.get(n.id) ?? "" } }
-          : n,
-      ),
+      prev.map((n) => ({
+        ...n,
+        data: {
+          ...n.data,
+          ...(n.type === "pipeline-output" ? { text: textById.get(n.id) ?? "" } : {}),
+          swapHighlighted: n.id === swapHoverTargetId,
+          shiftHeld,
+          deletePending: pendingIds !== null && pendingIds.has(n.id),
+        },
+      })),
     );
-  }, [outputs, setRFNodes]);
-
-  useEffect(() => {
-    setRFNodes((prev) =>
-      prev.map((n) => ({ ...n, data: { ...n.data, swapHighlighted: n.id === swapHoverTargetId } })),
-    );
-  }, [swapHoverTargetId, setRFNodes]);
-
-  // Propagate global shift-key state into each node so they can style accordingly.
-  useEffect(() => {
-    setRFNodes((prev) => prev.map((n) => ({ ...n, data: { ...n.data, shiftHeld } })));
-  }, [shiftHeld, setRFNodes]);
-
-  // When the cascade-hover source changes, mark all descendants as deletePending.
-  useEffect(() => {
-    if (!cascadeHoverSourceId) {
-      setRFNodes((prev) => prev.map((n) => ({ ...n, data: { ...n.data, deletePending: false } })));
-      return;
-    }
-    const pendingIds = getDescendantIds(cascadeHoverSourceId, rfEdges);
-    setRFNodes((prev) =>
-      prev.map((n) => ({ ...n, data: { ...n.data, deletePending: pendingIds.has(n.id) } })),
-    );
-  }, [cascadeHoverSourceId, rfEdges, setRFNodes]);
+  }, [outputs, swapHoverTargetId, shiftHeld, cascadeHoverSourceId, rfEdges, setRFNodes]);
 
   const handleNodesChange: OnNodesChange<Node> = useCallback(
     (changes) => {

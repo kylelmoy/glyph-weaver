@@ -74,6 +74,8 @@ export function graphToFlow(
     childrenOf.get(edge.source)?.push(edge.target);
   }
 
+  const nodeById = new Map(graph.nodes.map((n) => [n.id, n]));
+
   const nodes: Node[] = graph.nodes.map((n) => {
     if (n.operationId === INPUT_NODE_ID) {
       return {
@@ -110,9 +112,8 @@ export function graphToFlow(
     const op = OPERATIONS_BY_ID.get(n.operationId);
 
     // Reordering is disabled for set operations (multi-input).
-    const parentNode = parentId ? graph.nodes.find((p) => p.id === parentId) : undefined;
-    const singleChild =
-      children.length === 1 ? graph.nodes.find((c) => c.id === children[0]) : undefined;
+    const parentNode = parentId ? nodeById.get(parentId) : undefined;
+    const singleChild = children.length === 1 ? nodeById.get(children[0]) : undefined;
     const canMoveUp =
       !op?.multiInput &&
       !!parentId &&
