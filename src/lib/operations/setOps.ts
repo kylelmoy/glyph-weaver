@@ -57,4 +57,29 @@ export const setOps: OperationDefinition[] = [
       return [...a.filter((line) => !bSet.has(line)), ...b.filter((line) => !aSet.has(line))];
     },
   },
+  {
+    id: "concat-lines",
+    name: "Concat. Lines",
+    description: "Concatenate each line from A with the corresponding line from B, separated by a delimiter",
+    category: "Set",
+    multiInput: true,
+    params: [
+      {
+        key: "delimiter",
+        label: "Delimiter",
+        placeholder: ", ",
+        monospace: true,
+      },
+    ],
+    apply: (lines) => lines,
+    applyMulti: ([a = [], b = []], params) => {
+      const delimiter = params.delimiter ?? "";
+      const len = Math.max(a.length, b.length);
+      const result: string[] = [];
+      for (let i = 0; i < len; i++) {
+        result.push((a[i] ?? "") + delimiter + (b[i] ?? ""));
+      }
+      return result;
+    },
+  },
 ];
