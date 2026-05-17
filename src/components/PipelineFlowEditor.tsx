@@ -135,8 +135,12 @@ export function PipelineFlowEditor({
   const [rfEdges, setRFEdges, onRFEdgesChange] = useEdgesState(initialFlowRef.current.edges);
 
   const prevGraphRef = useRef(graph);
+  const selectedNodeIdRef = useRef(selectedNodeId);
+  selectedNodeIdRef.current = selectedNodeId;
 
   // Sync graph → RF when graph changes externally (e.g., palette adds a node).
+  // Reads selectedNodeId via ref so a selection change alone doesn't trigger a
+  // full graphToFlow rebuild — that's handled by the lightweight effect below.
   useEffect(() => {
     if (prevGraphRef.current === graph) return;
     prevGraphRef.current = graph;
@@ -151,7 +155,7 @@ export function PipelineFlowEditor({
         onCascadeHover: setCascadeHoverSourceId,
         onRemoveCascadeNode,
       },
-      selectedNodeId,
+      selectedNodeIdRef.current,
     );
     setRFNodes(nodes);
     setRFEdges(edges);
@@ -161,11 +165,18 @@ export function PipelineFlowEditor({
     onRemoveNode,
     onSwapWithParent,
     onSwapWithChild,
-    selectedNodeId,
     setRFNodes,
     setRFEdges,
     onRemoveCascadeNode,
   ]);
+
+  // Lightweight: update only the selected field when selection changes, avoiding
+  // a full graphToFlow rebuild on every node click.
+  useEffect(() => {
+    setRFNodes((prev) =>
+      prev.map((n) => ({ ...n, selected: n.id === selectedNodeId })),
+    );
+  }, [selectedNodeId, setRFNodes]);
 
   // Sync output text, swap highlight, shift-key, and cascade-delete preview into node
   // data in one pass to avoid four separate React re-renders.
@@ -230,7 +241,7 @@ export function PipelineFlowEditor({
         }
       }
     },
-    [onRFNodesChange, rfNodes, rfEdges, graph, onGraphChange, selectedNodeId, onSelectNode],
+    [onRFNodesChange, rfNodes, rfEdges, onGraphChange, selectedNodeId, onSelectNode],
   );
 
   const handleNodeClick = useCallback(
@@ -261,7 +272,7 @@ export function PipelineFlowEditor({
         }
       }
     },
-    [onRFEdgesChange, rfNodes, rfEdges, graph, onGraphChange],
+    [onRFEdgesChange, rfNodes, rfEdges, onGraphChange],
   );
 
   const onConnect: OnConnect = useCallback(
@@ -280,7 +291,7 @@ export function PipelineFlowEditor({
       prevGraphRef.current = newGraph;
       onGraphChange(newGraph);
     },
-    [setRFEdges, rfEdges, rfNodes, graph, onGraphChange],
+    [setRFEdges, rfEdges, rfNodes, onGraphChange],
   );
 
   const onReconnect = useCallback(

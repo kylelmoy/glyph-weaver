@@ -27,28 +27,42 @@ import {
   Row,
   Text,
 } from "@once-ui-system/core";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 // ── Operations palette helpers ────────────────────────────────────────────────
 
+// Pre-computed once — OPERATIONS is a module-level constant so this never changes.
+const OPS_BY_CATEGORY = new Map(
+  OPERATION_CATEGORIES.map((cat) => [cat, OPERATIONS.filter((op) => op.category === cat)]),
+);
+
 interface CategorySectionProps {
   name: string;
+  category: string;
   ops: OperationDefinition[];
   isExpanded: boolean;
-  onToggle: () => void;
+  onToggle: (category: string) => void;
   onAdd: (operationId: string, asSibling: boolean) => void;
   shiftHeld: boolean;
 }
 
 /** Collapsible accordion section used for both named categories and "Recent". */
-function CategorySection({ name, ops, isExpanded, onToggle, onAdd, shiftHeld }: CategorySectionProps) {
+const CategorySection = memo(function CategorySection({
+  name,
+  category,
+  ops,
+  isExpanded,
+  onToggle,
+  onAdd,
+  shiftHeld,
+}: CategorySectionProps) {
   return (
     <Column gap="4">
       <Row
         fillWidth
         vertical="center"
         horizontal="between"
-        onClick={onToggle}
+        onClick={() => onToggle(category)}
         style={{ cursor: "pointer" }}
       >
         <Heading as="h5">{name}</Heading>
@@ -77,7 +91,7 @@ function CategorySection({ name, ops, isExpanded, onToggle, onAdd, shiftHeld }: 
       )}
     </Column>
   );
-}
+});
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
@@ -99,14 +113,14 @@ export default function Home() {
     };
   }, []);
 
-  const toggleCategory = (category: string) => {
+  const toggleCategory = useCallback((category: string) => {
     setExpandedCategories((prev) => {
       const next = new Set(prev);
       if (next.has(category)) next.delete(category);
       else next.add(category);
       return next;
     });
-  };
+  }, []);
 
   const {
     graph,
@@ -136,17 +150,30 @@ export default function Home() {
   // uses the ReactFlow context to check candidate positions against existing nodes.
   const findFreePositionRef = useRef<FindFreePosition | undefined>(undefined);
 
-  const addOperationAndTrack = (operationId: string, asSibling = false) => {
-    addOperation(operationId, findFreePositionRef.current, asSibling);
+  // addOperation changes when graph/selection changes; use a ref so
+  // addOperationAndTrack stays stable and doesn't invalidate CategorySection.memo.
+  const addOperationRef = useRef(addOperation);
+  addOperationRef.current = addOperation;
+
+  const addOperationAndTrack = useCallback((operationId: string, asSibling = false) => {
+    addOperationRef.current(operationId, findFreePositionRef.current, asSibling);
     setRecentOperationIds((prev) =>
       [operationId, ...prev.filter((id) => id !== operationId)].slice(0, 6),
     );
-  };
+  }, []);
 
   const handleAddInputNode = () => addInputNode(findFreePositionRef.current);
   const handleAddOutputNode = () => addOutputNode(findFreePositionRef.current);
 
   const outputs = useMemo(() => processGraph(graph), [graph]);
+
+  const recentOps = useMemo(
+    () => recentOperationIds.flatMap((id) => {
+      const op = OPERATIONS.find((o) => o.id === id);
+      return op ? [op] : [];
+    }),
+    [recentOperationIds],
+  );
 
   const [operationSearch, setOperationSearch] = useState("");
   const searchQuery = operationSearch.trim().toLowerCase();
@@ -284,12 +311,10 @@ export default function Home() {
                 {recentOperationIds.length > 0 && (
                   <CategorySection
                     name="Recent"
-                    ops={recentOperationIds.flatMap((id) => {
-                      const op = OPERATIONS.find((o) => o.id === id);
-                      return op ? [op] : [];
-                    })}
+                    category="Recent"
+                    ops={recentOps}
                     isExpanded={expandedCategories.has("Recent")}
-                    onToggle={() => toggleCategory("Recent")}
+                    onToggle={toggleCategory}
                     onAdd={addOperationAndTrack}
                     shiftHeld={shiftHeld}
                   />
@@ -299,9 +324,10 @@ export default function Home() {
                   <CategorySection
                     key={category}
                     name={category}
-                    ops={OPERATIONS.filter((op) => op.category === category)}
+                    category={category}
+                    ops={OPS_BY_CATEGORY.get(category) ?? []}
                     isExpanded={expandedCategories.has(category)}
-                    onToggle={() => toggleCategory(category)}
+                    onToggle={toggleCategory}
                     onAdd={addOperationAndTrack}
                     shiftHeld={shiftHeld}
                   />

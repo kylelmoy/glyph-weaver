@@ -4,7 +4,7 @@ import { OPERATIONS_BY_ID } from "@/lib/operations";
 import { Column, IconButton, Input, Row, Text } from "@once-ui-system/core";
 import { Handle, Position } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 
 const DEBOUNCE_MS = 150;
 
@@ -18,7 +18,7 @@ interface ParamInputProps {
   onUpdateParam: (key: string, value: string) => void;
 }
 
-function ParamInput({ nodeId, paramKey, label, placeholder, monospace, value, onUpdateParam }: ParamInputProps) {
+const ParamInput = memo(function ParamInput({ nodeId, paramKey, label, placeholder, monospace, value, onUpdateParam }: ParamInputProps) {
   const [localValue, setLocalValue] = useState(value);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSentRef = useRef(value);
@@ -51,7 +51,7 @@ function ParamInput({ nodeId, paramKey, label, placeholder, monospace, value, on
       style={monospace ? { fontFamily: "monospace" } : undefined}
     />
   );
-}
+});
 
 export interface OpNodeData extends Record<string, unknown> {
   operationId: string;
