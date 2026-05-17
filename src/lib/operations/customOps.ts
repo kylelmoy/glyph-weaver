@@ -23,6 +23,7 @@ export const customOps: OperationDefinition[] = [
         label: "Expression (use `line`)",
         placeholder: "e.g. line.split(',').reverse().join(',')",
         monospace: true,
+        raw: true,
       },
     ],
     apply: (lines, params) => {

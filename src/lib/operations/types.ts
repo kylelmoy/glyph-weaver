@@ -18,6 +18,12 @@ export interface ParamDefinition {
   placeholder?: string;
   /** When true, the input renders in a monospace font (useful for code or regex). */
   monospace?: boolean;
+  /**
+   * When true, the param value is passed to the operation exactly as typed —
+   * escape sequences like \t and \n are NOT expanded. Use for params where the
+   * consumer (regex engine, JS engine) handles its own escaping.
+   */
+  raw?: true;
 }
 
 /**

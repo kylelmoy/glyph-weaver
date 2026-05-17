@@ -50,7 +50,7 @@ export const filteringOps: OperationDefinition[] = [
     description: "Keep only lines that match a regular expression",
     category: "Filtering",
     params: [
-      { key: "pattern", label: "Regex pattern", placeholder: "e.g. ^\\d+$", monospace: true },
+      { key: "pattern", label: "Regex pattern", placeholder: "e.g. ^\\d+$", monospace: true, raw: true },
     ],
     apply: (lines, params) => {
       const pattern = params.pattern ?? "";
@@ -69,7 +69,7 @@ export const filteringOps: OperationDefinition[] = [
     description: "Remove lines that match a regular expression",
     category: "Filtering",
     params: [
-      { key: "pattern", label: "Regex pattern", placeholder: "e.g. ^\\s*#", monospace: true },
+      { key: "pattern", label: "Regex pattern", placeholder: "e.g. ^\\s*#", monospace: true, raw: true },
     ],
     apply: (lines, params) => {
       const pattern = params.pattern ?? "";

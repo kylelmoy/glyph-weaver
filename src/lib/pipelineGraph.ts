@@ -92,6 +92,44 @@ export interface GraphOutput {
   label?: string;
 }
 
+// ── Param escape processing ───────────────────────────────────────────────────
+
+/**
+ * Expand escape sequences in a single param value.
+ * Handles \t (tab), \n (newline), \r (carriage return), \\ (literal backslash).
+ * Unknown escapes (e.g. \d, \w) are left as-is so regex syntax passes through.
+ */
+function unescapeParam(value: string): string {
+  let result = "";
+  let i = 0;
+  while (i < value.length) {
+    if (value[i] === "\\" && i + 1 < value.length) {
+      const next = value[i + 1];
+      if (next === "t")        { result += "\t"; i += 2; }
+      else if (next === "n")   { result += "\n"; i += 2; }
+      else if (next === "r")   { result += "\r"; i += 2; }
+      else if (next === "\\")  { result += "\\"; i += 2; }
+      else                     { result += value[i]; i++; } // unknown escape — keep backslash
+    } else {
+      result += value[i++];
+    }
+  }
+  return result;
+}
+
+/** Apply `unescapeParam` to all param values except those marked `raw: true`. */
+function unescapeParams(
+  params: Record<string, string>,
+  paramDefs: ReadonlyArray<{ key: string; raw?: true }> = [],
+): Record<string, string> {
+  const rawKeys = new Set(paramDefs.filter((p) => p.raw).map((p) => p.key));
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(params)) {
+    result[key] = rawKeys.has(key) ? value : unescapeParam(value);
+  }
+  return result;
+}
+
 // ── Graph processing ──────────────────────────────────────────────────────────
 
 /**
@@ -185,13 +223,13 @@ export function processGraph(graph: PipelineGraph): GraphOutput[] {
       const bText = bParent ? (outputCache.get(bParent.source) ?? "") : "";
       const aLines = aText === "" ? [] : aText.split("\n");
       const bLines = bText === "" ? [] : bText.split("\n");
-      outputCache.set(id, op.applyMulti([aLines, bLines], node.params).join("\n"));
+      outputCache.set(id, op.applyMulti([aLines, bLines], unescapeParams(node.params, op.params)).join("\n"));
     } else {
       // Single-input operations.
       const parentId = parents[0]?.source;
       const sourceText = parentId !== undefined ? (outputCache.get(parentId) ?? "") : "";
       const lines = sourceText === "" ? [] : sourceText.split("\n");
-      const resultLines = op ? op.apply(lines, node.params) : lines;
+      const resultLines = op ? op.apply(lines, unescapeParams(node.params, op.params)) : lines;
       outputCache.set(id, resultLines.join("\n"));
     }
   }
