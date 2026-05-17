@@ -395,7 +395,8 @@ export function usePipeline() {
       }
     }
 
-    if (selectedNodeIdRef.current && toRemove.has(selectedNodeIdRef.current)) setSelectedNodeId(null);
+    if (selectedNodeIdRef.current && toRemove.has(selectedNodeIdRef.current))
+      setSelectedNodeId(null);
 
     setGraph((prev) => ({
       nodes: prev.nodes.filter((n) => !toRemove.has(n.id)),

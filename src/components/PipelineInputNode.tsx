@@ -129,8 +129,7 @@ export function PipelineInputNode({ id, data, selected }: NodeProps) {
               }}
             />
             <Text variant="body-default-xs" onBackground="neutral-weak" align="right">
-              {localText.length} chars ·{" "}
-              {localText === "" ? 0 : localText.split("\n").length} lines
+              {localText.length} chars · {localText === "" ? 0 : localText.split("\n").length} lines
             </Text>
           </>
         )}

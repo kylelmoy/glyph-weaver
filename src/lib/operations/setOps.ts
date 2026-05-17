@@ -60,7 +60,8 @@ export const setOps: OperationDefinition[] = [
   {
     id: "concat-lines",
     name: "Concat. Lines",
-    description: "Concatenate each line from A with the corresponding line from B, separated by a delimiter",
+    description:
+      "Concatenate each line from A with the corresponding line from B, separated by a delimiter",
     category: "Set",
     multiInput: true,
     params: [

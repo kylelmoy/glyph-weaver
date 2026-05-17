@@ -18,7 +18,15 @@ interface ParamInputProps {
   onUpdateParam: (key: string, value: string) => void;
 }
 
-const ParamInput = memo(function ParamInput({ nodeId, paramKey, label, placeholder, monospace, value, onUpdateParam }: ParamInputProps) {
+const ParamInput = memo(function ParamInput({
+  nodeId,
+  paramKey,
+  label,
+  placeholder,
+  monospace,
+  value,
+  onUpdateParam,
+}: ParamInputProps) {
   const [localValue, setLocalValue] = useState(value);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSentRef = useRef(value);

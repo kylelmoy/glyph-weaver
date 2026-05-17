@@ -173,9 +173,7 @@ export function PipelineFlowEditor({
   // Lightweight: update only the selected field when selection changes, avoiding
   // a full graphToFlow rebuild on every node click.
   useEffect(() => {
-    setRFNodes((prev) =>
-      prev.map((n) => ({ ...n, selected: n.id === selectedNodeId })),
-    );
+    setRFNodes((prev) => prev.map((n) => ({ ...n, selected: n.id === selectedNodeId })));
   }, [selectedNodeId, setRFNodes]);
 
   // Sync output text, swap highlight, shift-key, and cascade-delete preview into node

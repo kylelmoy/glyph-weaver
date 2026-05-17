@@ -96,7 +96,15 @@ export const editOps: OperationDefinition[] = [
     name: "Extract Regex Match",
     description: "Replace each line with its first regex match; lines with no match are removed",
     category: "Edit",
-    params: [{ key: "pattern", label: "Regex pattern", placeholder: "e.g. \\d+", monospace: true, raw: true }],
+    params: [
+      {
+        key: "pattern",
+        label: "Regex pattern",
+        placeholder: "e.g. \\d+",
+        monospace: true,
+        raw: true,
+      },
+    ],
     apply: (lines, params) => {
       const pattern = params.pattern ?? "";
       if (!pattern) return lines;

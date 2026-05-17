@@ -73,7 +73,9 @@ const CategorySection = memo(function CategorySection({
         />
       </Row>
       {isExpanded && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--static-space-4)" }}>
+        <div
+          style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--static-space-4)" }}
+        >
           {ops.map((op) => (
             <Button
               key={op.id}
@@ -103,8 +105,12 @@ export default function Home() {
   const [shiftHeld, setShiftHeld] = useState(false);
 
   useEffect(() => {
-    const down = (e: KeyboardEvent) => { if (e.key === "Shift") setShiftHeld(true); };
-    const up = (e: KeyboardEvent) => { if (e.key === "Shift") setShiftHeld(false); };
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "Shift") setShiftHeld(true);
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === "Shift") setShiftHeld(false);
+    };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     return () => {
@@ -168,10 +174,11 @@ export default function Home() {
   const outputs = useMemo(() => processGraph(graph), [graph]);
 
   const recentOps = useMemo(
-    () => recentOperationIds.flatMap((id) => {
-      const op = OPERATIONS.find((o) => o.id === id);
-      return op ? [op] : [];
-    }),
+    () =>
+      recentOperationIds.flatMap((id) => {
+        const op = OPERATIONS.find((o) => o.id === id);
+        return op ? [op] : [];
+      }),
     [recentOperationIds],
   );
 
@@ -290,7 +297,13 @@ export default function Home() {
                   No results
                 </Text>
               ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "var(--static-space-4)" }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "var(--static-space-4)",
+                  }}
+                >
                   {filteredOps.map((op) => (
                     <Button
                       key={op.id}
