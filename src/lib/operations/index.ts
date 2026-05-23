@@ -17,6 +17,7 @@ import { filteringOps } from "./filteringOps";
 import { caseOps } from "./caseOps";
 import { editOps } from "./editOps";
 import { formatOps } from "./formatOps";
+import { fixedWidthOps } from "./fixedWidthOps";
 import { customOps } from "./customOps";
 import { setOps } from "./setOps";
 
@@ -27,6 +28,7 @@ export const OPERATIONS = [
   ...caseOps,
   ...editOps,
   ...formatOps,
+  ...fixedWidthOps,
   ...customOps,
   ...setOps,
 ];
@@ -44,6 +46,7 @@ export const OPERATION_CATEGORIES: OperationCategory[] = [
   "Filtering",
   "Edit",
   "Format",
+  "Fixed Width",
   "Set",
   "Case",
   "Custom",

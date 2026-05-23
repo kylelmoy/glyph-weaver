@@ -5,6 +5,7 @@ export type OperationCategory =
   | "Case"
   | "Edit"
   | "Format"
+  | "Fixed Width"
   | "Custom"
   | "Set";
 
