@@ -93,6 +93,15 @@ export function PipelineFlowEditor({
     );
   }, [theme]);
 
+  const [showBackground, setShowBackground] = useState(
+    () => typeof window === "undefined" || (window.innerWidth <= 1920 && window.innerHeight <= 1080),
+  );
+  useEffect(() => {
+    const check = () => setShowBackground(window.innerWidth <= 1920 && window.innerHeight <= 1080);
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   const [swapHoverTargetId, setSwapHoverTargetId] = useState<string | null>(null);
   const [shiftHeld, setShiftHeld] = useState(false);
   const [cascadeHoverSourceId, setCascadeHoverSourceId] = useState<string | null>(null);
@@ -365,7 +374,7 @@ export function PipelineFlowEditor({
         snapToGrid
         snapGrid={[50, 50]}
       >
-        <Background variant={BackgroundVariant.Dots} gap={25} />
+        {showBackground && <Background variant={BackgroundVariant.Dots} gap={25} />}
         <Controls />
         <IntersectionHelper findFreePositionRef={findFreePositionRef} />
       </ReactFlow>
