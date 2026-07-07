@@ -4,7 +4,9 @@ export type OperationCategory =
   | "Filtering"
   | "Case"
   | "Edit"
-  | "Format"
+  | "TSV"
+  | "CSV"
+  | "JSON"
   | "Fixed Width"
   | "Custom"
   | "Set";

@@ -16,7 +16,9 @@ import { sortingOps } from "./sortingOps";
 import { filteringOps } from "./filteringOps";
 import { caseOps } from "./caseOps";
 import { editOps } from "./editOps";
-import { formatOps } from "./formatOps";
+import { tsvOps } from "./tsvOps";
+import { csvOps } from "./csvOps";
+import { jsonOps } from "./jsonOps";
 import { fixedWidthOps } from "./fixedWidthOps";
 import { customOps } from "./customOps";
 import { setOps } from "./setOps";
@@ -27,7 +29,9 @@ export const OPERATIONS = [
   ...filteringOps,
   ...caseOps,
   ...editOps,
-  ...formatOps,
+  ...tsvOps,
+  ...csvOps,
+  ...jsonOps,
   ...fixedWidthOps,
   ...customOps,
   ...setOps,
@@ -45,7 +49,9 @@ export const OPERATION_CATEGORIES: OperationCategory[] = [
   "Sorting",
   "Filtering",
   "Edit",
-  "Format",
+  "TSV",
+  "CSV",
+  "JSON",
   "Fixed Width",
   "Set",
   "Case",
