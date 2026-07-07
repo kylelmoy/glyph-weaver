@@ -83,8 +83,7 @@ export const fixedWidthOps: OperationDefinition[] = [
     apply: (lines, params) => {
       const width = Number.parseInt(params.width ?? "");
       if (Number.isNaN(width) || width < 1) return lines;
-      const fill =
-        params.fill !== undefined && params.fill !== "" ? params.fill[0] : " ";
+      const fill = params.fill !== undefined && params.fill !== "" ? params.fill[0] : " ";
       return lines.map((line) =>
         line.length >= width ? line.slice(0, width) : line + fill.repeat(width - line.length),
       );
@@ -103,8 +102,7 @@ export const fixedWidthOps: OperationDefinition[] = [
     apply: (lines, params) => {
       const width = Number.parseInt(params.width ?? "");
       if (Number.isNaN(width) || width < 1) return lines;
-      const fill =
-        params.fill !== undefined && params.fill !== "" ? params.fill[0] : " ";
+      const fill = params.fill !== undefined && params.fill !== "" ? params.fill[0] : " ";
       return lines.map((line) =>
         line.length >= width ? line.slice(0, width) : fill.repeat(width - line.length) + line,
       );

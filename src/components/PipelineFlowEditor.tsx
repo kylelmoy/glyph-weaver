@@ -94,7 +94,8 @@ export function PipelineFlowEditor({
   }, [theme]);
 
   const [showBackground, setShowBackground] = useState(
-    () => typeof window === "undefined" || (window.innerWidth <= 1920 && window.innerHeight <= 1080),
+    () =>
+      typeof window === "undefined" || (window.innerWidth <= 1920 && window.innerHeight <= 1080),
   );
   useEffect(() => {
     const check = () => setShowBackground(window.innerWidth <= 1920 && window.innerHeight <= 1080);
