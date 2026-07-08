@@ -14,8 +14,6 @@
  */
 
 import {
-  Background,
-  BackgroundVariant,
   Controls,
   ReactFlow,
   addEdge,
@@ -92,16 +90,6 @@ export function PipelineFlowEditor({
       (document.documentElement.getAttribute("data-theme") as "light" | "dark") ?? "light",
     );
   }, [theme]);
-
-  const [showBackground, setShowBackground] = useState(
-    () =>
-      typeof window === "undefined" || (window.innerWidth <= 1920 && window.innerHeight <= 1080),
-  );
-  useEffect(() => {
-    const check = () => setShowBackground(window.innerWidth <= 1920 && window.innerHeight <= 1080);
-    window.addEventListener("resize", check);
-    return () => window.removeEventListener("resize", check);
-  }, []);
 
   const [swapHoverTargetId, setSwapHoverTargetId] = useState<string | null>(null);
   const [shiftHeld, setShiftHeld] = useState(false);
@@ -375,7 +363,6 @@ export function PipelineFlowEditor({
         snapToGrid
         snapGrid={[50, 50]}
       >
-        {showBackground && <Background variant={BackgroundVariant.Dots} gap={25} />}
         <Controls />
         <IntersectionHelper findFreePositionRef={findFreePositionRef} />
       </ReactFlow>
